@@ -25,19 +25,19 @@ VERSION_X86_64="cyber-x86_64-18.04-20200812_0256"
 # VERSION_AARCH64="cyber-aarch64-18.04-20200717_0327"
 # L4T
 VERSION_AARCH64="cyber-aarch64-18.04-20200719_0434"
-VERSION_LOCAL_CYBER="local_cyber_dev"
 CYBER_CONTAINER="apollo_cyber_${USER}"
 CYBER_INSIDE="in-cyber-docker"
 
 DOCKER_REPO="apolloauto/apollo"
 DOCKER_RUN_CMD="docker run"
 DOCKER_PULL_CMD="docker pull"
+SHM_SIZE="2G"
 
 SUPPORTED_ARCHS=" x86_64 aarch64 "
 HOST_ARCH="$(uname -m)"
 TARGET_ARCH=""
 
-USE_GPU=0
+USE_GPU_HOST=0
 USE_LOCAL_IMAGE=0
 CUSTOM_VERSION=
 GEOLOC=
@@ -102,6 +102,7 @@ OPTIONS:
     -t, --tag <version>    Specify which version of a docker image to pull.
     -l, --local            Use local docker image.
     -m <arch>              Specify docker image for a different CPU arch.
+    --shm-size <bytes>     Size of /dev/shm . Passed directly to "docker run"
     stop [-f|--force]      Stop all running Apollo containers. Use "-f" to force removal.
 EOF
 }
@@ -137,6 +138,7 @@ function parse_arguments() {
     local use_local_image=0
     local custom_version=""
     local target_arch=""
+    local shm_size=""
     local geo=""
 
     while [[ $# -gt 0 ]] ; do
@@ -165,6 +167,10 @@ function parse_arguments() {
             _optarg_check_for_opt "${opt}" "${target_arch}"
             _target_arch_check "${target_arch}"
             ;;
+        --shm-size)
+            shm_size="$1"; shift
+            _optarg_check_for_opt "${opt}" "${shm_size}"
+            ;;
         stop)
             local force="$1"; shift
             info "Now, stop all apollo containers created by ${USER} ..."
@@ -180,8 +186,9 @@ function parse_arguments() {
 
     [[ ! -z "${geo}" ]] && GEOLOC="${geo}"
     USE_LOCAL_IMAGE="${use_local_image}"
-    [[ ! -z "${target_arch}" ]] && TARGET_ARCH="${target_arch}"
-    [[ ! -z "${custom_version}" ]] && CUSTOM_VERSION="${custom_version}"
+    [[ -n "${target_arch}" ]] && TARGET_ARCH="${target_arch}"
+    [[ -n "${custom_version}" ]] && CUSTOM_VERSION="${custom_version}"
+    [[ -n "${shm_size}" ]] && SHM_SIZE="${shm_size}"
 }
 
 # TODO(storypku): What does these do with apollo inside container
@@ -212,26 +219,18 @@ function determine_target_version_and_arch() {
     local version="$1"
     # If no custom version specified
     if [[ -z "${version}" ]]; then
-        if [[ ${USE_LOCAL_IMAGE} -eq 1 ]]; then
-            version="${VERSION_LOCAL_CYBER}"
-            if [[ -z "${TARGET_ARCH}" ]]; then
-                TARGET_ARCH="${HOST_ARCH}"
-            fi
-            _target_arch_check "${TARGET_ARCH}"
-        else # Neither CUSTOM_VERSION nor USE_LOCAL_IMAGE set
-            # if target arch not set, assume it is equal to host arch.
-            if [[ -z "${TARGET_ARCH}" ]]; then
-                TARGET_ARCH="${HOST_ARCH}"
-            fi
-            _target_arch_check "${TARGET_ARCH}"
-            if [[ "${TARGET_ARCH}" == "x86_64" ]]; then
-                version="${VERSION_X86_64}"
-            elif [[ "${TARGET_ARCH}" == "aarch64" ]]; then
-                version="${VERSION_AARCH64}"
-            else
-                error "CAN'T REACH HERE"
-                exit 1
-            fi
+        # if target arch not set, assume it is equal to host arch.
+        if [[ -z "${TARGET_ARCH}" ]]; then
+            TARGET_ARCH="${HOST_ARCH}"
+        fi
+        _target_arch_check "${TARGET_ARCH}"
+        if [[ "${TARGET_ARCH}" == "x86_64" ]]; then
+            version="${VERSION_X86_64}"
+        elif [[ "${TARGET_ARCH}" == "aarch64" ]]; then
+            version="${VERSION_AARCH64}"
+        else
+            error "CAN'T REACH HERE"
+            exit 1
         fi
     elif [[ "${version}" =~ local* ]]; then
         if [[ -z "${TARGET_ARCH}" ]]; then
@@ -309,7 +308,7 @@ function determine_gpu_use_aarch64() {
             use_gpu=0
         fi
     fi
-    USE_GPU="${use_gpu}"
+    USE_GPU_HOST="${use_gpu}"
 }
 
 function determine_gpu_use_amd64() {
@@ -320,12 +319,12 @@ function determine_gpu_use_amd64() {
     elif [ -z "$(eval ${nv_driver} )" ]; then
         warning "No GPU device found. CPU will be used."
     else
-        USE_GPU=1
+        USE_GPU_HOST=1
     fi
 
     # Try to use GPU inside container
     local nv_docker_doc="https://github.com/NVIDIA/nvidia-docker/blob/master/README.md"
-    if [ ${USE_GPU} -eq 1 ]; then
+    if [ ${USE_GPU_HOST} -eq 1 ]; then
         if [ ! -z "$(which nvidia-docker)" ]; then
             DOCKER_RUN_CMD="nvidia-docker run"
             warning "nvidia-docker is deprecated. Please install latest docker" \
@@ -338,10 +337,10 @@ function determine_gpu_use_amd64() {
                 DOCKER_RUN_CMD="docker run --gpus all"
             else
                 warning "You must upgrade to docker-ce 19.03+ to access GPU from container!"
-                USE_GPU=0
+                USE_GPU_HOST=0
             fi
         else
-            USE_GPU=0
+            USE_GPU_HOST=0
             warning "Cannot access GPU from within container. Please install latest docker" \
                     "and nvidia-container-toolkit as described by: "
             warning "  ${nv_docker_doc}"
@@ -491,7 +490,7 @@ function start_cyber_container() {
         -e DOCKER_GRP="${group}" \
         -e DOCKER_GRP_ID="${gid}" \
         -e DOCKER_IMG="${image}" \
-        -e USE_GPU="${USE_GPU}" \
+        -e USE_GPU="${USE_GPU_HOST}" \
         -e NVIDIA_VISIBLE_DEVICES=all \
         -e NVIDIA_DRIVER_CAPABILITIES=compute,video,graphics,utility \
         -e OMP_NUM_THREADS=1 \
@@ -501,7 +500,7 @@ function start_cyber_container() {
         --add-host "${CYBER_INSIDE}:172.0.0.1" \
         --add-host "${local_host}:127.0.0.1" \
         --hostname "${CYBER_INSIDE}" \
-        --shm-size 2G \
+        --shm-size "${SHM_SIZE}" \
         --pid=host \
         "${image}" \
         /bin/bash

@@ -19,14 +19,16 @@
 set -e
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
-
-. /tmp/installers/installer_base.sh
+. ./installer_base.sh
 
 TARGET_ARCH="$(uname -m)"
 if [ "${TARGET_ARCH}" = "aarch64" ]; then
     warning "libtorch for aarch64 not ready"
     exit 0
 fi
+
+# Libtorch-gpu dependency
+pip3_install mkl
 
 # PKG_NAME="libtorch-cxx11-abi-shared-with-deps-1.5.0.zip"
 # DOWNLOAD_LINK="https://download.pytorch.org/libtorch/cu102/${PKG_NAME}"

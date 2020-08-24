@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2017 The Apollo Authors. All Rights Reserved.
+ * Copyright 2020 The Apollo Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,27 @@
  * limitations under the License.
  *****************************************************************************/
 
-#pragma once
+#include "modules/audio/inference/siren_detection.h"
 
-#include "gflags/gflags.h"
+#include "gtest/gtest.h"
 
-// math : active set solver
-DECLARE_double(default_active_set_eps_num);
-DECLARE_double(default_active_set_eps_den);
-DECLARE_double(default_active_set_eps_iter_ref);
-DECLARE_double(default_qp_smoothing_eps_num);
-DECLARE_double(default_qp_smoothing_eps_den);
-DECLARE_double(default_qp_smoothing_eps_iter_ref);
-DECLARE_bool(default_enable_active_set_debug_info);
-DECLARE_int32(default_qp_iteration_num);
+namespace apollo {
+namespace audio {
+
+class SirenDetectionTest : public ::testing::Test {
+ public:
+  virtual void SetUp() {}
+
+ protected:
+  SirenDetection siren_detection_;
+};
+
+TEST_F(SirenDetectionTest, is_siren) {
+  std::vector<std::vector<double>> signals(4,
+    (std::vector<double> (72000, 0.01)));
+  bool result = siren_detection_.Evaluate(signals);
+  EXPECT_EQ(result, false);
+}
+
+}  // namespace audio
+}  // namespace apollo

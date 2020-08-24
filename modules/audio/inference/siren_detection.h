@@ -35,7 +35,7 @@ class SirenDetection {
 
   ~SirenDetection() = default;
 
-  bool Evaluate(const std::vector<std::vector<float>>& signals);
+  bool Evaluate(const std::vector<std::vector<double>>& signals);
 
  private:
   void LoadModel();

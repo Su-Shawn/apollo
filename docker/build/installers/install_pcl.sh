@@ -22,8 +22,8 @@ if [ -z "${WORKHORSE}" ]; then
     WORKHORSE="cpu"
 fi
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
-. /tmp/installers/installer_base.sh
+CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+. ${CURR_DIR}/installer_base.sh
 
 # Install system-provided pcl
 # apt-get -y update && \
@@ -62,7 +62,8 @@ apt_get_update_and_install \
     libusb-1.0-0-dev \
     libopenni-dev \
     libjpeg-dev \
-    libpng-dev
+    libpng-dev \
+    libpcap-dev
 
 # NOTE(storypku)
 # libglfw3-dev depends on libglfw3,
@@ -87,7 +88,7 @@ tar xzf ${PKG_NAME}
 #  -DCMAKE_SKIP_RPATH=ON \
 
 pushd pcl-pcl-${VERSION}/
-    patch -p1 < /tmp/installers/pcl-sse-fix-${VERSION}.patch
+    patch -p1 < ${CURR_DIR}/pcl-sse-fix-${VERSION}.patch
     mkdir build && cd build
     cmake .. \
         "${GPU_OPTIONS}" \

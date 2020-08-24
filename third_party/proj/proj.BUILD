@@ -1,17 +1,17 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
-licenses(["notice"])
-
 package(default_visibility = ["//visibility:public"])
 
+licenses(["notice"])
+
 cc_library(
-    name = "qpOASES",
+    name = "proj",
     includes = [
         ".",
     ],
     linkopts = [
         "-L/opt/apollo/sysroot/lib",
-        "-lqpOASES",
+        "-lproj",
     ],
     linkstatic = False,
 )
