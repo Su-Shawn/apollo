@@ -13,6 +13,7 @@ export default class RealtimeWebSocketEndpoint {
     this.mapUpdatePeriodMs = 1000;
     this.mapLastUpdateTimestamp = 0;
     this.updatePOI = true;
+    this.updateDefaultRoutingPoints = true;
     this.routingTime = undefined;
     this.currentMode = null;
     this.worker = new Worker();
@@ -102,6 +103,12 @@ export default class RealtimeWebSocketEndpoint {
         case 'DefaultEndPoint':
           STORE.routeEditingManager.updateDefaultRoutingEndPoint(message);
           break;
+        case 'DefaultRoutings':
+          STORE.routeEditingManager.updateDefaultRoutingPoints(message);
+          break;
+        case 'AddDefaultRoutingPath':
+          STORE.routeEditingManager.addDefaultRoutingPath(message);
+          break;
         case 'RoutePath':
           RENDERER.updateRouting(message.routingTime, message.routePath);
           break;
@@ -113,6 +120,11 @@ export default class RealtimeWebSocketEndpoint {
         case 'DataCollectionProgress':
           if (message) {
             STORE.hmi.updateDataCollectionProgress(message.data);
+          }
+          break;
+        case 'PreprocessProgress':
+          if (message) {
+            STORE.hmi.updatePreprocessProgress(message.data);
           }
           break;
       }
@@ -145,12 +157,21 @@ export default class RealtimeWebSocketEndpoint {
           this.requestDefaultRoutingEndPoint();
           this.updatePOI = false;
         }
+        // Load default routing points user defined
+        if (this.updateDefaultRoutingPoints) {
+          this.requestDefaultRoutingPoints();
+          this.updateDefaultRoutingPoints = false;
+        }
         if (this.pointcloudWS.isEnabled()) {
           this.pointcloudWS.requestPointCloud();
         }
         this.requestSimulationWorld(STORE.options.showPNCMonitor);
-        if (STORE.hmi.isCalibrationMode) {
+        if (STORE.hmi.isVehicleCalibrationMode) {
           this.requestDataCollectionProgress();
+          this.requestPreprocessProgress();
+        }
+        if (STORE.hmi.isSensorCalibrationMode) {
+          this.requestPreprocessProgress();
         }
       }
     }, this.simWorldUpdatePeriodMs);
@@ -221,9 +242,29 @@ export default class RealtimeWebSocketEndpoint {
     this.websocket.send(JSON.stringify(request));
   }
 
+  requestDefaultCycleRouting(start, start_heading, waypoint, end, cycleNumber) {
+    const request = {
+      type: 'SendDefaultCycleRoutingRequest',
+      start,
+      end,
+      waypoint,
+      cycleNumber,
+    };
+    if (start_heading) {
+      request.start.heading = start_heading;
+    }
+    this.websocket.send(JSON.stringify(request));
+  }
+
   requestDefaultRoutingEndPoint() {
     this.websocket.send(JSON.stringify({
       type: 'GetDefaultEndPoint',
+    }));
+  }
+
+  requestDefaultRoutingPoints() {
+    this.websocket.send(JSON.stringify({
+      type: 'GetDefaultRoutings',
     }));
   }
 
@@ -254,6 +295,7 @@ export default class RealtimeWebSocketEndpoint {
       value: map,
     }));
     this.updatePOI = true;
+    this.updateDefaultRoutingPoints = true;
   }
 
   changeVehicle(vehicle) {
@@ -303,6 +345,18 @@ export default class RealtimeWebSocketEndpoint {
     }));
   }
 
+  submitAudioEvent(eventTimeMs, obstacleId, audioType, movingResult, direction, isSirenOn) {
+    this.websocket.send(JSON.stringify({
+      type: 'SubmitAudioEvent',
+      event_time_ms: eventTimeMs,
+      obstacle_id: obstacleId,
+      audio_type: audioType,
+      moving_result: movingResult,
+      audio_direction: direction,
+      is_siren_on: isSirenOn,
+    }));
+  }
+
   toggleSimControl(enable) {
     this.websocket.send(JSON.stringify({
       type: 'ToggleSimControl',
@@ -334,5 +388,30 @@ export default class RealtimeWebSocketEndpoint {
 
   setPointCloudWS(pointcloudws) {
     this.pointcloudWS = pointcloudws;
+  }
+
+  saveDefaultRouting(routingName,points) {
+    const request = {
+      type: 'SaveDefaultRouting',
+      name: routingName,
+      point: points,
+    };
+    this.websocket.send(JSON.stringify(request));
+  }
+
+  requestPreprocessProgress() {
+    this.websocket.send(JSON.stringify({
+      type: 'RequestPreprocessProgress',
+    }));
+  }
+
+  startPreprocessData(data, type) {
+    const request = {
+      type,
+    };
+    if (data) {
+      request.data = data;
+    }
+    this.websocket.send(JSON.stringify(request));
   }
 }

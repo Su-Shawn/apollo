@@ -32,32 +32,33 @@ MAP_VOLUME_CONF=
 OTHER_VOLUME_CONF=
 
 DEFAULT_MAPS=(
-  sunnyvale_big_loop
-  sunnyvale_loop
-  sunnyvale_with_two_offices
-  san_mateo
+    sunnyvale_big_loop
+    sunnyvale_loop
+    sunnyvale_with_two_offices
+    san_mateo
 )
 
 DEFAULT_TEST_MAPS=(
-  sunnyvale_big_loop
-  sunnyvale_loop
+    sunnyvale_big_loop
+    sunnyvale_loop
 )
 
 eval $(grep ^VERSION_X86_64= ${APOLLO_ROOT_DIR}/docker/scripts/dev_start.sh)
 eval $(grep ^VERSION_AARCH64= ${APOLLO_ROOT_DIR}/docker/scripts/dev_start.sh)
 
 function parse_arguments() {
-    while [ $# -gt 0 ] ; do
-        local opt="$1"; shift
+    while [ $# -gt 0 ]; do
+        local opt="$1"
+        shift
         case "${opt}" in
-        -f|--fast)
-            FAST_MODE="yes"
-            ;;
+            -f | --fast)
+                FAST_MODE="yes"
+                ;;
 
-        *)
-            warning "Unknown option: ${opt}"
-            exit 2
-            ;;
+            *)
+                warning "Unknown option: ${opt}"
+                exit 2
+                ;;
         esac
     done # End while loop
 
@@ -89,18 +90,19 @@ function setup_devices_and_mount_local_volumes() {
 
     [ -d "${CACHE_ROOT_DIR}" ] || mkdir -p "${CACHE_ROOT_DIR}"
 
-    source "${APOLLO_ROOT_DIR}/scripts/apollo_base.sh" CYBER_ONLY
+    source "${APOLLO_ROOT_DIR}/scripts/apollo_base.sh"
     setup_device
 
     local volumes="-v $APOLLO_ROOT_DIR:/apollo"
 
     local os_release="$(lsb_release -rs)"
     case "${os_release}" in
-        14.04)
-            warning "[Deprecated] Support for Ubuntu 14.04 will be removed" \
-                    "in the near future. Please upgrade to ubuntu 18.04+."
+        16.04)
+            warning "[Deprecated] Support for Ubuntu 16.04 will be removed" \
+                "in the near future. Please upgrade to ubuntu 18.04+."
+            volumes="${volumes} -v /dev:/dev"
             ;;
-        16.04|18.04|20.04|*)
+        18.04 | 20.04 | *)
             volumes="${volumes} -v /dev:/dev"
             ;;
     esac
@@ -109,7 +111,7 @@ function setup_devices_and_mount_local_volumes() {
                         -v /etc/localtime:/etc/localtime:ro \
                         -v /usr/src:/usr/src \
                         -v /lib/modules:/lib/modules"
-    volumes="$(tr -s " " <<< "${volumes}")"
+    volumes="$(tr -s " " <<<"${volumes}")"
     eval "${__retval}='${volumes}'"
 }
 
@@ -121,9 +123,9 @@ function determine_gpu_use_host() {
     else
         # Check nvidia-driver and GPU device
         local nv_driver="nvidia-smi"
-        if [ ! -x "$(command -v ${nv_driver} )" ]; then
+        if [ ! -x "$(command -v ${nv_driver})" ]; then
             warning "No nvidia-driver found. CPU will be used"
-        elif [ -z "$(eval ${nv_driver} )" ]; then
+        elif [ -z "$(eval ${nv_driver})" ]; then
             warning "No GPU device found. CPU will be used."
         else
             USE_GPU_HOST=1
@@ -136,9 +138,6 @@ function determine_gpu_use_host() {
         DOCKER_VERSION=$(docker version --format '{{.Server.Version}}')
         if [ ! -z "$(which nvidia-docker)" ]; then
             DOCKER_RUN="nvidia-docker run"
-            warning "nvidia-docker is deprecated. Please install latest docker " \
-                    "and nvidia-container-toolkit as described by:"
-            warning "  ${nv_docker_doc}"
         elif [ ! -z "$(which nvidia-container-toolkit)" ]; then
             if dpkg --compare-versions "${DOCKER_VERSION}" "ge" "19.03"; then
                 DOCKER_RUN="docker run --gpus all"
@@ -149,17 +148,16 @@ function determine_gpu_use_host() {
         else
             USE_GPU_HOST=0
             warning "Cannot access GPU from within container. Please install " \
-                    "latest docker and nvidia-container-toolkit as described by: "
+                "latest Docker and nvidia-container-toolkit as described by: "
             warning "  ${nv_docker_doc}"
         fi
     fi
 }
 
-
 function docker_pull() {
     local img="$1"
     info "Start pulling docker image ${img} ..."
-    if ! docker pull "${img}" ; then
+    if ! docker pull "${img}"; then
         error "Failed to pull docker image : ${img}"
         exit 1
     fi
@@ -168,7 +166,7 @@ function docker_pull() {
 # Note(storypku): Reuse existing docker volumes for CI
 function reuse_or_start_volume() {
     local container="$1"
-    if docker ps --format "{{.Names}}" | grep -q "${container}" ; then
+    if docker ps --format "{{.Names}}" | grep -q "${container}"; then
         info "Found existing volume \"${container}\", will be reused."
         return
     fi
@@ -212,25 +210,31 @@ function mount_map_volumes() {
 function mount_other_volumes() {
     info "Mount other volumes ..."
     local volume_conf=
-    if [ "${FAST_MODE}" = "no" ]; then
-        # YOLO3D
-        local yolo3d_volume="apollo_yolo3d_volume_${USER}"
-        local yolo3d_image="${DOCKER_REPO}:yolo3d_volume-${TARGET_ARCH}-latest"
-        reuse_or_start_volume "${yolo3d_volume}" "${yolo3d_image}"
-        volume_conf="${volume_conf} --volumes-from ${yolo3d_volume}"
-    fi
 
-    # LOCALIZATION
-    local localization_volume="apollo_localization_volume_${USER}"
-    local localization_image="${DOCKER_REPO}:localization_volume-${TARGET_ARCH}-latest"
-    reuse_or_start_volume "${localization_volume}" "${localization_image}"
-    volume_conf="${volume_conf} --volumes-from ${localization_volume}"
+    # AUDIO
+    local audio_volume="apollo_audio_volume_${USER}"
+    local audio_image="${DOCKER_REPO}:data_volume-audio_model-${TARGET_ARCH}-latest"
+    reuse_or_start_volume "${audio_volume}" "${audio_image}"
+    volume_conf="${volume_conf} --volumes-from ${audio_volume}"
 
-    if [ "${TARGET_ARCH}" = "x86_64" ]; then
-        local local_3rdparty_volume="apollo_local_third_party_volume_${USER}"
-        local local_3rdparty_image="${DOCKER_REPO}:local_third_party_volume-${TARGET_ARCH}-latest"
-        reuse_or_start_volume "${local_3rdparty_volume}" "${local_3rdparty_image}"
-        volume_conf="${volume_conf} --volumes-from ${local_3rdparty_volume}"
+    # YOLOV4
+    local yolov4_volume="apollo_yolov4_volume_${USER}"
+    local yolov4_image="${DOCKER_REPO}:yolov4_volume-emergency_detection_model-${TARGET_ARCH}-latest"
+    reuse_or_start_volume "${yolov4_volume}" "${yolov4_image}"
+    volume_conf="${volume_conf} --volumes-from ${yolov4_volume}"
+
+    # FASTER_RCNN
+    local faster_rcnn_volume="apollo_faster_rcnn_volume_${USER}"
+    local faster_rcnn_image="${DOCKER_REPO}:faster_rcnn_volume-traffic_light_detection_model-${TARGET_ARCH}-latest"
+    reuse_or_start_volume "${faster_rcnn_volume}" "${faster_rcnn_image}"
+    volume_conf="${volume_conf} --volumes-from ${faster_rcnn_volume}"
+
+    # SMOKE
+    if [[ "${TARGET_ARCH}" == "x86_64" ]]; then
+        local smoke_volume="apollo_smoke_volume_${USER}"
+        local smoke_image="${DOCKER_REPO}:smoke_volume-yolo_obstacle_detection_model-${TARGET_ARCH}-latest"
+        reuse_or_start_volume "${smoke_volume}" "${smoke_image}"
+        volume_conf="${volume_conf} --volumes-from ${smoke_volume}"
     fi
 
     OTHER_VOLUME_CONF="${volume_conf}"
@@ -242,7 +246,7 @@ function main() {
     parse_arguments "$@"
     determine_dev_image
 
-    if ! docker_pull "${APOLLO_DEV_IMAGE}" ; then
+    if ! docker_pull "${APOLLO_DEV_IMAGE}"; then
         error "Failed to pull docker image."
         exit 1
     fi
@@ -257,25 +261,27 @@ function main() {
     mount_other_volumes
     set -x
 
-    ${DOCKER_RUN} -i --rm   \
-        --privileged    \
+    ${DOCKER_RUN} -i --rm \
+        --privileged \
         -e NVIDIA_VISIBLE_DEVICES=all \
         -e NVIDIA_DRIVER_CAPABILITIES=compute,video,graphics,utility \
-        ${MAP_VOLUME_CONF}      \
-        ${OTHER_VOLUME_CONF}    \
-        ${local_volumes}        \
+        -e DOCKER_IMG="${APOLLO_DEV_IMAGE}" \
+        -e USE_GPU_HOST="${USE_GPU_HOST}" \
+        ${MAP_VOLUME_CONF} \
+        ${OTHER_VOLUME_CONF} \
+        ${local_volumes} \
         --net host \
         -w /apollo \
         --add-host "${DEV_INSIDE}:127.0.0.1" \
         --add-host "${local_host}:127.0.0.1" \
         --hostname "${DEV_INSIDE}" \
-        --shm-size 2G   \
-        --pid=host      \
+        --shm-size 2G \
+        --pid=host \
         -v /dev/null:/dev/raw1394 \
         "${APOLLO_DEV_IMAGE}" \
         /bin/bash /apollo/scripts/apollo_ci.sh
 
-    if [ $? -ne 0 ];then
+    if [ $? -ne 0 ]; then
         error "CI failed based on image: ${APOLLO_DEV_IMAGE}"
         exit 1
     fi

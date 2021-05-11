@@ -22,11 +22,12 @@
 #include <cstdlib>
 #include <thread>
 
+#include "modules/canbus/proto/chassis.pb.h"
+
 #include "cyber/common/log.h"
 #include "cyber/scheduler/scheduler_factory.h"
 #include "cyber/time/clock.h"
 #include "modules/bridge/common/bridge_proto_serialized_buf.h"
-#include "modules/canbus/proto/chassis.pb.h"
 
 using apollo::cyber::Clock;
 
@@ -105,6 +106,7 @@ int main(int argc, char *argv[]) {
     count = 10000;
   } else {
     count = atoi(argv[1]);
+    CHECK_LE(count, 20000U);
   }
   send("127.0.0.1", 8900, count);
   return 0;

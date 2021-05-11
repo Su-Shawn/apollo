@@ -16,6 +16,7 @@
 
 #include "modules/planning/common/trajectory_evaluator.h"
 
+#include <algorithm>
 #include <limits>
 
 #include "absl/strings/str_cat.h"
@@ -66,21 +67,23 @@ void TrajectoryEvaluator::EvaluateTrajectoryByTime(
     // filter out abnormal perception data
     if (tp.relative_time() > last_relative_time) {
       discretized_trajectory.AppendTrajectoryPoint(tp);
+      last_relative_time = tp.relative_time();
     } else {
       const std::string msg = absl::StrCat(
-          "SKIP trajectory point: frame_num[", frame_num, "] obstacle_id[",
+          "DISCARD trajectory point: frame_num[", frame_num, "] obstacle_id[",
           obstacle_id, "] last_relative_time[", last_relative_time,
           "] relatice_time[", tp.relative_time(), "] relative_time_diff[",
           tp.relative_time() - last_relative_time, "]");
       WriteLog(msg);
     }
-    last_relative_time = tp.relative_time();
   }
 
   const int low_bound =
-      ceil(updated_trajectory.front().relative_time() / delta_time);
+      std::max(-150.0,
+               ceil(updated_trajectory.front().relative_time() / delta_time));
   const int high_bound =
-      floor(updated_trajectory.back().relative_time() / delta_time);
+      std::min(150.0,
+               floor(updated_trajectory.back().relative_time() / delta_time));
   ADEBUG << "frame_num[" << frame_num << "] obstacle_id[" << obstacle_id
          << "] low[" << low_bound << "] high[" << high_bound << "]";
   for (int i = low_bound; i <= high_bound; ++i) {

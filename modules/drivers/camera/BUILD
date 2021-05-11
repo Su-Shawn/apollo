@@ -1,7 +1,11 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/platform:build_defs.bzl", "if_x86_64")
 
 package(default_visibility = ["//visibility:public"])
+
+CAMERA_COPTS = ['-DMODULE_NAME=\\"camera\\"']
 
 cc_binary(
     name = "libcamera_component.so",
@@ -19,11 +23,33 @@ cc_binary(
     ],
 )
 
+filegroup(
+    name = "runtime_data",
+    srcs = glob([
+        "conf/*.txt",
+        "dag/*.dag",
+        "launch/*.launch",
+    ]),
+)
+
+install(
+    name = "install",
+    data = [
+      ":runtime_data",
+    ],
+    targets = [
+      ":libcamera_component.so",
+    ],
+    deps = [
+        "//cyber:install",
+    ],
+)
+
 cc_library(
     name = "camera_component_lib",
     srcs = ["camera_component.cc"],
     hdrs = ["camera_component.h"],
-    copts = ['-DMODULE_NAME=\\"camera\\"'],
+    copts = CAMERA_COPTS,
     deps = [
         ":camera",
         "//cyber",
@@ -37,7 +63,7 @@ cc_library(
     name = "compress_component_lib",
     srcs = ["compress_component.cc"],
     hdrs = ["compress_component.h"],
-    copts = ['-DMODULE_NAME=\\"camera\\"'],
+    copts = CAMERA_COPTS,
     deps = [
         "//cyber",
         "//modules/common/proto:error_code_cc_proto",
@@ -46,8 +72,8 @@ cc_library(
         "//modules/drivers/proto:sensor_image_cc_proto",
         "@opencv//:core",
         "@opencv//:highgui",
-        "@opencv//:imgproc",
         "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
     ],
 )
 
@@ -55,11 +81,11 @@ cc_library(
     name = "camera",
     srcs = select(
         {
-            "//tools/platform:x86_mode": [
+            "@platforms//cpu:x86_64": [
                 "usb_cam.cc",
                 "util.cc",
             ],
-            "//tools/platform:aarch64_mode": [
+            "@platforms//cpu:aarch64": [
                 "usb_cam.cc",
             ],
         },
@@ -67,33 +93,22 @@ cc_library(
     ),
     hdrs = select(
         {
-            "//tools/platform:x86_mode": [
+            "@platforms//cpu:x86_64": [
                 "usb_cam.h",
                 "util.h",
             ],
-            "//tools/platform:aarch64_mode": [
+            "@platforms//cpu:aarch64": [
                 "usb_cam.h",
             ],
         },
         no_match_error = "Please Build with an ARM or Linux x86_64 platform",
     ),
-    copts = select({
-        "//tools/platform:x86_mode": ["-mavx2"],
-        "//tools/platform:aarch64_mode": [""],
-    }),
-    deps = select(
-        {
-            "//tools/platform:x86_mode": [
-                "//cyber",
-                "//modules/drivers/camera/proto:config_cc_proto",
-                "@adv_plat",
-            ],
-            "//tools/platform:aarch64_mode": [
-                "//cyber",
-                "//modules/drivers/camera/proto:config_cc_proto",
-            ],
-        },
-        no_match_error = "Please Build with an ARM or Linux x86_64 platform",
+    deps = [
+        "//cyber",
+        "//modules/drivers/camera/proto:config_cc_proto",
+        "@ffmpeg//:avcodec",
+    ] + if_x86_64(
+        ["@adv_plat"],
     ),
 )
 

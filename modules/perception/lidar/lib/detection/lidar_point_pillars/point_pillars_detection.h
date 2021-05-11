@@ -38,7 +38,7 @@ struct DetectionOptions {};
 
 class PointPillarsDetection {
  public:
-  PointPillarsDetection() = default;
+  PointPillarsDetection();
   ~PointPillarsDetection() = default;
 
   bool Init(const DetectionInitOptions& options = DetectionInitOptions());
@@ -48,8 +48,7 @@ class PointPillarsDetection {
   std::string Name() const { return "PointPillarsDetection"; }
 
  private:
-  void CloudToArray(const base::PointFCloudPtr& pc_ptr,
-                    float* out_points_array,
+  void CloudToArray(const base::PointFCloudPtr& pc_ptr, float* out_points_array,
                     float normalizing_factor);
 
   void FuseCloud(const base::PointFCloudPtr& out_cloud_ptr,
@@ -73,6 +72,14 @@ class PointPillarsDetection {
   std::unique_ptr<PointPillars> point_pillars_ptr_;
   std::deque<base::PointDCloudPtr> prev_world_clouds_;
   base::PointFCloudPtr cur_cloud_ptr_;
+
+  // point cloud range
+  float x_min_;
+  float x_max_;
+  float y_min_;
+  float y_max_;
+  float z_min_;
+  float z_max_;
 
   // time statistics
   double downsample_time_ = 0.0;

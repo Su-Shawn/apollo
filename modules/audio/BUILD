@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -12,14 +13,7 @@ cc_library(
     ],
     deps = [
         "//cyber",
-        "//modules/audio/common:audio_info",
-        "//modules/audio/inference:direction_detection",
-        "//modules/audio/inference:moving_detection",
-        "//modules/audio/inference:siren_detection",
-        "//modules/audio/proto:audio_cc_proto",
-        "//modules/audio/proto:audio_conf_cc_proto",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/drivers/microphone/proto:audio_cc_proto",
+        "//modules/audio/common:message_process",
         "//modules/localization/proto:localization_cc_proto",
     ],
     alwayslink = True,
@@ -30,6 +24,31 @@ cc_binary(
     linkshared = True,
     linkstatic = False,
     deps = [":audio_component_lib"],
+)
+
+filegroup(
+    name = "runtime_data",
+    srcs = glob([
+        "conf/**",
+        "dag/*.dag",
+        "launch/*.launch",
+    ]),
+)
+
+# Data->Models:
+# modules/audio/data/torch_siren_detection_model.pt
+
+install(
+    name = "install",
+    data = [
+        ":runtime_data",
+    ],
+    targets = [
+        ":libaudio_component.so",
+    ],
+    deps = [
+        "//cyber:install",
+    ],
 )
 
 cpplint()

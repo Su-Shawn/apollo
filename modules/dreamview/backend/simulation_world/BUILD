@@ -3,13 +3,17 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+DREAMVIEW_COPTS = ['-DMODULE_NAME=\\"dreamview\\"']
+
 cc_library(
     name = "simulation_world_service",
     srcs = ["simulation_world_service.cc"],
     hdrs = ["simulation_world_service.h"],
-    copts = ['-DMODULE_NAME=\\"dreamview\\"'],
+    copts = DREAMVIEW_COPTS,
     deps = [
         "//cyber",
+        "//modules/audio/proto:audio_cc_proto",
+        "//modules/audio/proto:audio_event_cc_proto",
         "//modules/canbus/proto:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:vehicle_config_helper",
@@ -31,6 +35,7 @@ cc_library(
         "//modules/planning/proto:planning_cc_proto",
         "//modules/prediction/proto:prediction_obstacle_cc_proto",
         "//modules/storytelling/proto:story_cc_proto",
+        "//modules/task_manager/proto:task_manager_cc_proto",
         "@com_github_nlohmann_json//:json",
         "@com_google_absl//absl/strings",
     ],
@@ -54,17 +59,19 @@ cc_library(
     name = "simulation_world_updater",
     srcs = ["simulation_world_updater.cc"],
     hdrs = ["simulation_world_updater.h"],
-    copts = ['-DMODULE_NAME=\\"dreamview\\"'],
+    copts = DREAMVIEW_COPTS,
     deps = [
         ":simulation_world_service",
         "//modules/common/util:map_util",
         "//modules/dreamview/backend/common:dreamview_gflags",
-        "//modules/dreamview/backend/data_collection_monitor",
+        "//modules/dreamview/backend/fuel_monitor:fuel_monitor_manager",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/backend/map:map_service",
         "//modules/dreamview/backend/perception_camera_updater",
         "//modules/dreamview/backend/sim_control",
+        "//modules/routing/proto:default_routing_cc_proto",
         "//modules/routing/proto:poi_cc_proto",
+        "//modules/task_manager/proto:task_manager_cc_proto",
         "@boost",
     ],
 )

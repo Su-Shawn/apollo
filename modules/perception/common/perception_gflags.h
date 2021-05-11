@@ -33,10 +33,15 @@ DECLARE_string(work_root);
 
 // lidar_point_pillars
 DECLARE_int32(gpu_id);
-DECLARE_string(pfe_onnx_file);
-DECLARE_string(rpn_onnx_file);
+DECLARE_string(pfe_torch_file);
+DECLARE_string(scattered_torch_file);
+DECLARE_string(backbone_torch_file);
+DECLARE_string(fpn_torch_file);
+DECLARE_string(bbox_head_torch_file);
 DECLARE_double(normalizing_factor);
 DECLARE_int32(num_point_feature);
+DECLARE_bool(enable_ground_removal);
+DECLARE_double(ground_removal_height);
 DECLARE_bool(enable_downsample_beams);
 DECLARE_int32(downsample_beams_factor);
 DECLARE_bool(enable_downsample_pointcloud);
@@ -53,5 +58,14 @@ DECLARE_double(score_threshold);
 DECLARE_double(nms_overlap_threshold);
 DECLARE_int32(num_output_box_feature);
 
+// emergency detection onnx
+DECLARE_string(onnx_obstacle_detector_model);
+DECLARE_string(onnx_test_input_path);
+DECLARE_string(onnx_test_input_name_file);
+DECLARE_string(onnx_prediction_image_path);
+DECLARE_int32(num_classes);
+
+// emergency detection libtorch
+DECLARE_string(torch_detector_model);
 }  // namespace perception
 }  // namespace apollo

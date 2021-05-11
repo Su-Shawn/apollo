@@ -22,6 +22,7 @@ DECLARE_bool(enable_adapter_dump);
 DECLARE_string(gps_topic);
 DECLARE_string(imu_topic);
 DECLARE_string(raw_imu_topic);
+DECLARE_string(audio_detection_topic);
 DECLARE_string(chassis_topic);
 DECLARE_string(chassis_detail_topic);
 DECLARE_string(localization_topic);
@@ -35,9 +36,12 @@ DECLARE_string(control_preprocessor_topic);
 DECLARE_string(control_local_view_topic);
 DECLARE_string(control_core_command_topic);
 DECLARE_string(pointcloud_topic);
+DECLARE_string(pointcloud_16_topic);
+DECLARE_string(pointcloud_16_raw_topic);
 DECLARE_string(pointcloud_16_front_up_topic);
 DECLARE_string(pointcloud_64_topic);
 DECLARE_string(pointcloud_128_topic);
+DECLARE_string(pointcloud_hesai_40p_topic);
 DECLARE_string(pointcloud_raw_topic);
 DECLARE_string(velodyne_raw_topic);
 DECLARE_string(pointcloud_fusion_topic);
@@ -80,6 +84,9 @@ DECLARE_string(image_short_topic);
 DECLARE_string(image_long_topic);
 DECLARE_string(camera_image_long_topic);
 DECLARE_string(camera_image_short_topic);
+DECLARE_string(camera_front_6mm_topic);
+DECLARE_string(camera_front_6mm_2_topic);
+DECLARE_string(camera_front_12mm_topic);
 DECLARE_string(camera_front_6mm_compressed_topic);
 DECLARE_string(camera_front_12mm_compressed_topic);
 DECLARE_string(camera_left_fisheye_compressed_topic);
@@ -102,13 +109,19 @@ DECLARE_string(relative_map_topic);
 DECLARE_string(navigation_topic);
 DECLARE_string(hmi_status_topic);
 DECLARE_string(audio_capture_topic);
+DECLARE_string(v2x_obu_traffic_light_topic);
+DECLARE_string(v2x_internal_obstacle_topic);
 DECLARE_string(v2x_obstacle_topic);
-DECLARE_string(v2x_trafficlight_topic);
+DECLARE_string(v2x_traffic_light_topic);
+DECLARE_string(v2x_traffic_light_for_hmi_topic);
+DECLARE_string(v2x_rsi_topic);
 DECLARE_string(storytelling_topic);
 DECLARE_string(gnss_raw_data_topic);
 DECLARE_string(stream_status_topic);
 DECLARE_string(heading_topic);
 DECLARE_string(rtcm_data_topic);
+DECLARE_string(audio_event_topic);
+DECLARE_string(task_topic);
 
 // Guardian topic
 DECLARE_string(guardian_topic);
@@ -124,3 +137,7 @@ DECLARE_string(recorder_status_topic);
 DECLARE_string(latency_recording_topic);
 // Latency reporting topic
 DECLARE_string(latency_reporting_topic);
+
+// It determins which lidar model(16 or 128) to load, if not to set,
+// the model will be loaded by the sensor name. Mainly for D-kit.
+DECLARE_string(lidar_model_version);

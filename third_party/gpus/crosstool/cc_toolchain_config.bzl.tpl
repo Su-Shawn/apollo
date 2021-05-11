@@ -3,10 +3,7 @@
 load(
     "@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl",
     "action_config",
-    "env_entry",
-    "env_set",
     "feature",
-    "feature_set",
     "flag_group",
     "flag_set",
     "tool",
@@ -454,12 +451,11 @@ def _features(cpu, compiler, ctx):
                     ),
                     flag_set(
                         actions = all_link_actions(),
-                        flag_groups = [
-                            flag_group(flags = (
-                                ["-Wl,-no-as-needed"] if cpu == "local" else []
-                            ) + [
-                                "-B" + ctx.attr.linker_bin_path,
-                            ]),
+                        flag_groups = ([
+                            flag_group(flags = ["-Wl,-no-as-needed"])
+                        ] if cpu == "local" else []) + ([
+                            flag_group(flags = ["-B" + ctx.attr.linker_bin_path])
+                        ] if ctx.attr.linker_bin_path else []) + [
                             flag_group(
                                 flags = ["@%{linker_param_file}"],
                                 expand_if_available = "linker_param_file",
@@ -573,6 +569,7 @@ def _impl(ctx):
             linker_path = ctx.attr.host_compiler_path,
             strip_path = ctx.attr.host_compiler_prefix + "/strip",
         )
+        artifact_name_patterns = []
     else:
         fail("Unreachable")
 
@@ -583,7 +580,7 @@ def _impl(ctx):
             ctx = ctx,
             features = _features(cpu, compiler, ctx),
             action_configs = action_configs,
-            artifact_name_patterns = [],
+            artifact_name_patterns = artifact_name_patterns,
             cxx_builtin_include_directories = ctx.attr.builtin_include_directories,
             toolchain_identifier = toolchain_identifier,
             host_system_name = "local",

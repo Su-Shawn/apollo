@@ -213,7 +213,7 @@ void IterativeAnchoringSmoother::AdjustStartEndHeading(
   // Sanity check
   CHECK_NOTNULL(point2d);
   CHECK_GT(xWS.cols(), 1);
-  CHECK_GT(point2d->size(), 3);
+  CHECK_GT(point2d->size(), 3U);
 
   // Set initial heading and bounds
   const double initial_heading = xWS(2, 0);
@@ -626,7 +626,13 @@ bool IterativeAnchoringSmoother::SmoothSpeed(const double init_a,
           .delta_t();
 
   const double total_t = 2 * path_length / max_reverse_acc * 10;
-  ADEBUG << "total_t is : " << total_t;
+
+  if (total_t + delta_t >= delta_t * std::numeric_limits<size_t>::max()) {
+    AERROR << "Number of knots overflow. total_t: " << total_t
+           << ", delta_t: " << delta_t;
+    return false;
+  }
+
   const size_t num_of_knots = static_cast<size_t>(total_t / delta_t) + 1;
 
   PiecewiseJerkSpeedProblem piecewise_jerk_problem(
@@ -798,7 +804,7 @@ bool IterativeAnchoringSmoother::IsValidPolynomialProfile(
 
 double IterativeAnchoringSmoother::CalcHeadings(
     const DiscretizedPath& path_points, const size_t index) {
-  CHECK_GT(path_points.size(), 2);
+  CHECK_GT(path_points.size(), 2U);
   double dx = 0.0;
   double dy = 0.0;
   if (index == 0) {

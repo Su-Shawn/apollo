@@ -22,10 +22,13 @@ cc_library(
         ":common",
         ":nms_cuda",
         ":params",
+        ":pfe_cuda",
         ":postprocess_cuda",
         ":preprocess_points",
         ":scatter_cuda",
+        "//cyber/common",
         "//modules/perception/common:perception_gflags",
+        "//third_party:libtorch",
         "@local_config_cuda//cuda:cudart",
         "@local_config_tensorrt//:tensorrt",
     ],
@@ -92,6 +95,16 @@ cuda_library(
 )
 
 cuda_library(
+    name = "pfe_cuda",
+    srcs = ["pfe_cuda.cu"],
+    hdrs = ["pfe_cuda.h"],
+    deps = [
+        ":common",
+        "@local_config_cuda//cuda:cudart",
+    ],
+)
+
+cuda_library(
     name = "postprocess_cuda",
     srcs = ["postprocess_cuda.cu"],
     hdrs = ["postprocess_cuda.h"],
@@ -124,7 +137,7 @@ cuda_library(
 
 cc_test(
     name = "point_pillars_test",
-    size = "small",
+    size = "large",
     srcs = ["point_pillars_test.cc"],
     deps = [
         ":point_pillars",

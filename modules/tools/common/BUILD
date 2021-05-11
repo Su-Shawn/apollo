@@ -12,6 +12,7 @@ py_library(
     srcs = ["message_manager.py"],
     deps = [
         ":proto_utils",
+        "//modules/audio/proto:audio_event_py_pb2",
         "//modules/canbus/proto:chassis_py_pb2",
         "//modules/common/proto:drive_event_py_pb2",
         "//modules/control/proto:control_cmd_py_pb2",
@@ -30,4 +31,9 @@ py_library(
 py_library(
     name = "proto_utils",
     srcs = ["proto_utils.py"],
+)
+
+py_library(
+    name = "file_utils",
+    srcs = ["file_utils.py"],
 )

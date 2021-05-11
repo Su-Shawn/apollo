@@ -29,13 +29,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "modules/perception/lidar/lib/detection/lidar_point_pillars/point_pillars.h"
 
-// headers in STL
 #include <chrono>
 #include <iostream>
 
-// headers in local files
-#include "modules/perception/lidar/lib/detection/lidar_point_pillars/point_pillars.h"
+#include "cyber/common/log.h"
 
 namespace apollo {
 namespace perception {
@@ -54,7 +53,6 @@ const int PointPillars::kNumClass = Params::kNumClass;
 const int PointPillars::kMaxNumPillars = Params::kMaxNumPillars;
 const int PointPillars::kMaxNumPointsPerPillar = Params::kMaxNumPointsPerPillar;
 const int PointPillars::kNumPointFeature = Params::kNumPointFeature;
-const int PointPillars::kPfeOutputSize = kMaxNumPillars * 64;
 const int PointPillars::kGridXSize =
     static_cast<int>((kMaxXRange - kMinXRange) / kPillarXSize);
 const int PointPillars::kGridYSize =
@@ -79,10 +77,10 @@ const std::vector<int> PointPillars::kAnchorRanges{
     kGridXSize,
     0,
     kGridYSize,
-    static_cast<int>(kGridXSize * 0.1),
-    static_cast<int>(kGridXSize * 0.9),
-    static_cast<int>(kGridYSize * 0.1),
-    static_cast<int>(kGridYSize * 0.9)};
+    static_cast<int>(kGridXSize * 0.25),
+    static_cast<int>(kGridXSize * 0.75),
+    static_cast<int>(kGridYSize * 0.25),
+    static_cast<int>(kGridYSize * 0.75)};
 const std::vector<int> PointPillars::kNumAnchorSets = Params::NumAnchorSets();
 const std::vector<std::vector<float>> PointPillars::kAnchorDxSizes =
     Params::AnchorDxSizes();
@@ -100,13 +98,19 @@ const std::vector<std::vector<float>> PointPillars::kAnchorRo =
 PointPillars::PointPillars(const bool reproduce_result_mode,
                            const float score_threshold,
                            const float nms_overlap_threshold,
-                           const std::string pfe_onnx_file,
-                           const std::string rpn_onnx_file)
+                           const std::string& pfe_torch_file,
+                           const std::string& scattered_torch_file,
+                           const std::string& backbone_torch_file,
+                           const std::string& fpn_torch_file,
+                           const std::string& bbox_head_torch_file)
     : reproduce_result_mode_(reproduce_result_mode),
       score_threshold_(score_threshold),
       nms_overlap_threshold_(nms_overlap_threshold),
-      pfe_onnx_file_(pfe_onnx_file),
-      rpn_onnx_file_(rpn_onnx_file) {
+      pfe_torch_file_(pfe_torch_file),
+      scattered_torch_file_(scattered_torch_file),
+      backbone_torch_file_(backbone_torch_file),
+      fpn_torch_file_(fpn_torch_file),
+      bbox_head_torch_file_(bbox_head_torch_file) {
   if (reproduce_result_mode_) {
     preprocess_points_ptr_.reset(new PreprocessPoints(
         kMaxNumPillars, kMaxNumPointsPerPillar, kNumPointFeature, kGridXSize,
@@ -123,9 +127,6 @@ PointPillars::PointPillars(const bool reproduce_result_mode,
       kNumThreads, kNumIndsForScan, kNumAnchor, kMinXRange, kMinYRange,
       kPillarXSize, kPillarYSize, kGridXSize, kGridYSize));
 
-  scatter_cuda_ptr_.reset(
-      new ScatterCuda(kNumThreads, kMaxNumPillars, kGridXSize, kGridYSize));
-
   const float float_min = std::numeric_limits<float>::lowest();
   const float float_max = std::numeric_limits<float>::max();
   postprocess_cuda_ptr_.reset(
@@ -134,7 +135,7 @@ PointPillars::PointPillars(const bool reproduce_result_mode,
                           kNumBoxCorners, kNumOutputBoxFeature));
 
   DeviceMemoryMalloc();
-  InitTRT();
+  InitTorch();
   InitAnchors();
 }
 
@@ -170,7 +171,6 @@ PointPillars::~PointPillars() {
   GPU_CHECK(cudaFree(pfe_buffers_[0]));
   GPU_CHECK(cudaFree(pfe_buffers_[1]));
   GPU_CHECK(cudaFree(pfe_buffers_[2]));
-  GPU_CHECK(cudaFree(pfe_buffers_[3]));
 
   GPU_CHECK(cudaFree(rpn_buffers_[0]));
   GPU_CHECK(cudaFree(rpn_buffers_[1]));
@@ -192,14 +192,6 @@ PointPillars::~PointPillars() {
   GPU_CHECK(cudaFree(dev_filtered_dir_));
   GPU_CHECK(cudaFree(dev_box_for_nms_));
   GPU_CHECK(cudaFree(dev_filter_count_));
-
-  pfe_context_->destroy();
-  rpn_context_->destroy();
-
-  pfe_runtime_->destroy();
-  rpn_runtime_->destroy();
-  pfe_engine_->destroy();
-  rpn_engine_->destroy();
 }
 
 void PointPillars::DeviceMemoryMalloc() {
@@ -242,7 +234,6 @@ void PointPillars::DeviceMemoryMalloc() {
                                        kNumPointFeature * sizeof(float)));
   GPU_CHECK(cudaMalloc(&pfe_buffers_[1], kMaxNumPillars * sizeof(float)));
   GPU_CHECK(cudaMalloc(&pfe_buffers_[2], kMaxNumPillars * 4 * sizeof(float)));
-  GPU_CHECK(cudaMalloc(&pfe_buffers_[3], kPfeOutputSize * sizeof(float)));
 
   GPU_CHECK(cudaMalloc(&rpn_buffers_[0], kRpnInputSize * sizeof(float)));
   GPU_CHECK(cudaMalloc(&rpn_buffers_[1], kRpnBoxOutputSize * sizeof(float)));
@@ -401,8 +392,9 @@ void PointPillars::ConvertAnchors2BoxAnchors(float* anchors_px,
                                              float* box_anchors_max_x_,
                                              float* box_anchors_max_y_) {
   // flipping box's dimension
-  float flipped_anchors_dx[kNumAnchor] = {};
-  float flipped_anchors_dy[kNumAnchor] = {};
+  float* flipped_anchors_dx = new float[kNumAnchor]();
+  float* flipped_anchors_dy = new float[kNumAnchor]();
+
   int ind = 0;
   for (size_t head = 0; head < kNumAnchorSets.size(); ++head) {
     int num_x_inds =
@@ -431,6 +423,7 @@ void PointPillars::ConvertAnchors2BoxAnchors(float* anchors_px,
         }
       }
     }
+
     for (int x = 0; x < num_x_inds; ++x) {
       for (int y = 0; y < num_y_inds; ++y) {
         for (size_t i = 0; i < kAnchorRo[head].size(); ++i) {
@@ -447,44 +440,48 @@ void PointPillars::ConvertAnchors2BoxAnchors(float* anchors_px,
       }
     }
   }
+
+  delete[] flipped_anchors_dx;
+  delete[] flipped_anchors_dy;
+}
+
+void PointPillars::InitTorch() {
+  if (gpu_id_ >= 0) {
+    device_type_ = torch::kCUDA;
+    device_id_ = gpu_id_;
+  } else {
+    device_type_ = torch::kCPU;
+  }
+
+  // Init torch net
+  torch::Device device(device_type_, device_id_);
+
+  pfe_net_ = torch::jit::load(pfe_torch_file_, device);
+  scattered_net_ = torch::jit::load(scattered_torch_file_, device);
+  backbone_net_ = torch::jit::load(backbone_torch_file_, device);
+  fpn_net_ = torch::jit::load(fpn_torch_file_, device);
+  bbox_head_net_ = torch::jit::load(bbox_head_torch_file_, device);
 }
 
 void PointPillars::InitTRT() {
-  // create a TensorRT model from the onnx model and serialize it to a stream
-  nvinfer1::IHostMemory* pfe_trt_model_stream{nullptr};
-  nvinfer1::IHostMemory* rpn_trt_model_stream{nullptr};
-  OnnxToTRTModel(pfe_onnx_file_, &pfe_trt_model_stream);
-  OnnxToTRTModel(rpn_onnx_file_, &rpn_trt_model_stream);
-  if (pfe_trt_model_stream == nullptr || rpn_trt_model_stream == nullptr) {
-    std::cerr << "Failed to load ONNX file " << std::endl;
+  // create a TensorRT model from the onnx model and load it into an engine
+  OnnxToTRTModel(pfe_onnx_file_, &pfe_engine_);
+  OnnxToTRTModel(rpn_onnx_file_, &rpn_engine_);
+  if (pfe_engine_ == nullptr || rpn_engine_ == nullptr) {
+    AERROR << "Failed to load ONNX file.";
   }
 
-  // deserialize the engine
-  pfe_runtime_ = nvinfer1::createInferRuntime(g_logger_);
-  rpn_runtime_ = nvinfer1::createInferRuntime(g_logger_);
-  if (pfe_runtime_ == nullptr || rpn_runtime_ == nullptr) {
-    std::cerr << "Failed to create TensorRT Runtime object." << std::endl;
-  }
-  pfe_engine_ = pfe_runtime_->deserializeCudaEngine(
-      pfe_trt_model_stream->data(), pfe_trt_model_stream->size(), nullptr);
-  rpn_engine_ = rpn_runtime_->deserializeCudaEngine(
-      rpn_trt_model_stream->data(), rpn_trt_model_stream->size(), nullptr);
-  if (pfe_engine_ == nullptr || rpn_engine_ == nullptr) {
-    std::cerr << "Failed to create TensorRT Engine." << std::endl;
-  }
-  pfe_trt_model_stream->destroy();
-  rpn_trt_model_stream->destroy();
+  // create execution context from the engine
   pfe_context_ = pfe_engine_->createExecutionContext();
   rpn_context_ = rpn_engine_->createExecutionContext();
   if (pfe_context_ == nullptr || rpn_context_ == nullptr) {
-    std::cerr << "Failed to create TensorRT Execution Context." << std::endl;
+    AERROR << "Failed to create TensorRT Execution Context.";
   }
 }
 
 void PointPillars::OnnxToTRTModel(
     const std::string& model_file,  // name of the onnx model
-    nvinfer1::IHostMemory**
-        trt_model_stream) {  // output buffer for the TensorRT model
+    nvinfer1::ICudaEngine** engine_ptr) {
   int verbosity = static_cast<int>(nvinfer1::ILogger::Severity::kWARNING);
 
   // create the builder
@@ -495,6 +492,7 @@ void PointPillars::OnnxToTRTModel(
   nvinfer1::INetworkDefinition* network =
       builder->createNetworkV2(explicit_batch);
 
+  // parse onnx model
   auto parser = nvonnxparser::createParser(*network, g_logger_);
   if (!parser->parseFromFile(model_file.c_str(), verbosity)) {
     std::string msg("failed to parse onnx file");
@@ -509,11 +507,8 @@ void PointPillars::OnnxToTRTModel(
   nvinfer1::ICudaEngine* engine =
       builder->buildEngineWithConfig(*network, *config);
 
+  *engine_ptr = engine;
   parser->destroy();
-
-  // serialize the engine, then close everything down
-  *trt_model_stream = engine->serialize();
-  engine->destroy();
   network->destroy();
   config->destroy();
   builder->destroy();
@@ -614,6 +609,11 @@ void PointPillars::DoInference(const float* in_points_array,
                                const int in_num_points,
                                std::vector<float>* out_detections,
                                std::vector<int>* out_labels) {
+  if (device_id_ < 0) {
+    AERROR << "Torch is not using GPU!";
+    return;
+  }
+
   Preprocess(in_points_array, in_num_points);
 
   anchor_mask_cuda_ptr_->DoAnchorMaskCuda(
@@ -634,28 +634,53 @@ void PointPillars::DoInference(const float* in_points_array,
                             kMaxNumPillars * 4 * sizeof(float),
                             cudaMemcpyDeviceToDevice, stream));
 
-  pfe_context_->enqueueV2(pfe_buffers_, stream, nullptr);
+  torch::Tensor tensor_pillar_point_feature = torch::from_blob(
+      pfe_buffers_[0],
+      {kMaxNumPillars, kMaxNumPointsPerPillar, kNumPointFeature}, torch::kCUDA);
+  torch::Tensor tensor_num_points_per_pillar =
+      torch::from_blob(pfe_buffers_[1], {kMaxNumPillars}, torch::kCUDA);
+  torch::Tensor tensor_pillar_coors =
+      torch::from_blob(pfe_buffers_[2], {kMaxNumPillars, 4}, torch::kCUDA);
 
-  GPU_CHECK(
-      cudaMemset(dev_scattered_feature_, 0, kRpnInputSize * sizeof(float)));
-  scatter_cuda_ptr_->DoScatterCuda(
-      host_pillar_count_[0], dev_x_coors_, dev_y_coors_,
-      reinterpret_cast<float*>(pfe_buffers_[3]), dev_scattered_feature_);
+  torch::Device device(device_type_, device_id_);
+  tensor_pillar_point_feature.to(device);
+  tensor_num_points_per_pillar.to(device);
+  tensor_pillar_coors.to(device);
 
-  GPU_CHECK(cudaMemcpyAsync(rpn_buffers_[0], dev_scattered_feature_,
-                            kBatchSize * kRpnInputSize * sizeof(float),
-                            cudaMemcpyDeviceToDevice, stream));
-  rpn_context_->enqueueV2(rpn_buffers_, stream, nullptr);
+  torch::Tensor scattered_batch_size = torch::ones(1);
+  scattered_batch_size.to(device);
+
+  auto pfe_output =
+      pfe_net_
+          .forward({tensor_pillar_point_feature, tensor_num_points_per_pillar,
+                    tensor_pillar_coors})
+          .toTensor();
+
+  auto scattered_feature =
+      scattered_net_
+          .forward({pfe_output, tensor_pillar_coors, scattered_batch_size})
+          .toTensor();
+
+  auto backbone_feature = backbone_net_.forward({scattered_feature});
+
+  auto fpn_feature = fpn_net_.forward({backbone_feature});
+
+  auto bbox_head_output = bbox_head_net_.forward({fpn_feature}).toTuple();
+
+  auto cls_score = bbox_head_output->elements()[0].toTensor();
+  auto bbox_pred = bbox_head_output->elements()[1].toTensor();
+  auto dir_cls_preds = bbox_head_output->elements()[2].toTensor();
 
   GPU_CHECK(cudaMemset(dev_filter_count_, 0, sizeof(int)));
   postprocess_cuda_ptr_->DoPostprocessCuda(
-      reinterpret_cast<float*>(rpn_buffers_[1]),
-      reinterpret_cast<float*>(rpn_buffers_[2]),
-      reinterpret_cast<float*>(rpn_buffers_[3]), dev_anchor_mask_,
-      dev_anchors_px_, dev_anchors_py_, dev_anchors_pz_, dev_anchors_dx_,
-      dev_anchors_dy_, dev_anchors_dz_, dev_anchors_ro_, dev_filtered_box_,
-      dev_filtered_score_, dev_filtered_label_, dev_filtered_dir_,
-      dev_box_for_nms_, dev_filter_count_, out_detections, out_labels);
+      bbox_pred.data_ptr<float>(),
+      cls_score.data_ptr<float>(),
+      dir_cls_preds.data_ptr<float>(),
+      dev_anchor_mask_, dev_anchors_px_, dev_anchors_py_, dev_anchors_pz_,
+      dev_anchors_dx_, dev_anchors_dy_, dev_anchors_dz_, dev_anchors_ro_,
+      dev_filtered_box_, dev_filtered_score_, dev_filtered_label_,
+      dev_filtered_dir_, dev_box_for_nms_, dev_filter_count_, out_detections,
+      out_labels);
 
   // release the stream and the buffers
   cudaStreamDestroy(stream);

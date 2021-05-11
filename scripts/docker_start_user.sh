@@ -28,6 +28,7 @@ function _create_user_account() {
     "${user_name}" --uid "${uid}" --gid "${gid}" # 2>/dev/null
 
   usermod -aG sudo "${user_name}"
+  usermod -aG video "${user_name}"
 }
 
 function setup_user_bashrc() {
@@ -70,6 +71,7 @@ function grant_device_permissions() {
   [ -e /dev/novatel2 ] && chmod a+rw /dev/novatel2
 
   [ -e /dev/ttyACM0 ] && chmod a+rw /dev/ttyACM0
+  [ -e /dev/imu ] && chmod a+rw /dev/imu
 
   # setup camera device
   [ -e /dev/camera/obstacle ] && chmod a+rw /dev/camera/obstacle
@@ -77,12 +79,22 @@ function grant_device_permissions() {
 
   # setup audio device
   [ -e /dev/snd ] && usermod -a -G audio "$1"
+
+  true
 }
 
 function setup_apollo_directories() {
   local apollo_dir="/opt/apollo"
   [[ -d "${apollo_dir}" ]] || mkdir -p "${apollo_dir}"
   # chown -R "${uid}:${gid}" "${apollo_dir}"
+}
+
+# FIXME(infra): This will change core pattern on the host also,
+# where the `/apollo` directory may not exist.
+function setup_core_pattern() {
+  if [[ -w /proc/sys/kernel/core_pattern ]]; then
+    echo "/apollo/data/core/core_%e.%p" > /proc/sys/kernel/core_pattern
+  fi
 }
 
 ##===================== Main ==============================##
@@ -101,6 +113,7 @@ function main() {
   setup_user_account_if_not_exist "$@"
   setup_apollo_directories "${uid}" "${gid}"
   grant_device_permissions "${user_name}"
+  setup_core_pattern
 }
 
 main "${DOCKER_USER}" "${DOCKER_USER_ID}" "${DOCKER_GRP}" "${DOCKER_GRP_ID}"

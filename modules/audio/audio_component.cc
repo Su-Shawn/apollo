@@ -17,11 +17,13 @@
 #include "modules/audio/audio_component.h"
 #include "modules/audio/proto/audio_conf.pb.h"
 #include "modules/common/proto/geometry.pb.h"
+#include "modules/common/util/message_util.h"
 
 namespace apollo {
 namespace audio {
 
 using apollo::common::Point3D;
+using apollo::common::util::FillHeader;
 using apollo::drivers::microphone::config::AudioData;
 
 AudioComponent::~AudioComponent() {}
@@ -49,23 +51,12 @@ bool AudioComponent::Init() {
 
 bool AudioComponent::Proc(const std::shared_ptr<AudioData>& audio_data) {
   // TODO(all) remove GetSignals() multiple calls
-  audio_info_.Insert(audio_data);
   AudioDetection audio_detection;
-  *audio_detection.mutable_position() =
-      direction_detection_.EstimateSoundSource(
-          audio_info_.GetSignals(audio_data->microphone_config().chunk()),
-          respeaker_extrinsics_file_,
-          audio_data->microphone_config().sample_rate(),
-          audio_data->microphone_config().mic_distance());
+  MessageProcess::OnMicrophone(*audio_data, respeaker_extrinsics_file_,
+      &audio_info_, &direction_detection_, &moving_detection_,
+      &siren_detection_, &audio_detection);
 
-  // TODO(Hongyi): enable after upload model files
-  // bool is_siren = siren_detection_.Evaluate(audio_info_.GetSignals(72000));
-  // audio_detection.set_is_siren(is_siren);
-  auto signals =
-      audio_info_.GetSignals(audio_data->microphone_config().chunk());
-  MovingResult moving_result = moving_detection_.Detect(signals);
-  audio_detection.set_moving_result(moving_result);
-  // TODO(all) add header to audio_detection
+  FillHeader(node_->Name(), &audio_detection);
   audio_writer_->Write(audio_detection);
   return true;
 }

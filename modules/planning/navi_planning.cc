@@ -101,7 +101,8 @@ Status NaviPlanning::InitFrame(const uint32_t sequence_num,
   std::list<hdmap::RouteSegments> segments;
   if (!reference_line_provider_->GetReferenceLines(&reference_lines,
                                                    &segments)) {
-    std::string msg = "Failed to create reference line";
+    const std::string msg = "Failed to create reference line";
+    AERROR << msg;
     return Status(ErrorCode::PLANNING_ERROR, msg);
   }
 
@@ -179,7 +180,7 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
                         ->mutable_not_ready();
 
   if (!status.ok() || !util::IsVehicleStateValid(vehicle_state)) {
-    std::string msg("Update VehicleStateProvider failed");
+    const std::string msg = "Update VehicleStateProvider failed";
     AERROR << msg;
     not_ready->set_reason(msg);
     status.Save(trajectory_pb->mutable_header()->mutable_status());
@@ -198,11 +199,12 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
       FLAGS_trajectory_stitching_preserved_length, true,
       last_publishable_trajectory_.get(), &replan_reason);
 
+  injector_->ego_info()->Update(stitching_trajectory.back(), vehicle_state);
   const uint32_t frame_num = static_cast<uint32_t>(seq_num_++);
   status = InitFrame(frame_num, stitching_trajectory.back(), vehicle_state);
 
   if (!frame_) {
-    std::string msg("Failed to init frame");
+    const std::string msg = "Failed to init frame";
     AERROR << msg;
     not_ready->set_reason(msg);
     status.Save(trajectory_pb->mutable_header()->mutable_status());
@@ -211,8 +213,6 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
     FillPlanningPb(start_timestamp, trajectory_pb);
     return;
   }
-
-  injector_->ego_info()->Update(stitching_trajectory.back(), vehicle_state);
 
   if (FLAGS_enable_record_debug) {
     frame_->RecordInputDebug(trajectory_pb->mutable_debug());
@@ -485,7 +485,7 @@ Status NaviPlanning::Plan(
 
   const auto* best_ref_info = frame_->FindDriveReferenceLineInfo();
   if (!best_ref_info) {
-    std::string msg("planner failed to make a driving plan");
+    const std::string msg = "planner failed to make a driving plan";
     AERROR << msg;
     if (last_publishable_trajectory_) {
       last_publishable_trajectory_->Clear();

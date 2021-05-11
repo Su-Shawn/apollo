@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 ###############################################################################
 # Copyright 2018 The Apollo Authors. All Rights Reserved.
 #
@@ -19,31 +18,37 @@
 # Fail on first error.
 set -e
 
+MY_MODE="${1:-download}"
+
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./installer_base.sh
 
-MY_MODE="$1" ; shift
+ARCH="$(uname -m)"
 
 DEST_DIR="${PKGS_DIR}/adv_plat"
-[[ -d ${DEST_DIR} ]] || mkdir -p ${DEST_DIR}
+[[ -d ${DEST_DIR} ]] && rm -rf ${DEST_DIR}
+mkdir -p ${DEST_DIR}
 
 if [[ "${MY_MODE}" == "download" ]]; then
-    PKG_NAME="adv_plat-3.0-x86_64.tar.gz"
-    CHECKSUM="1c4a0e205ab2940fc547e5c61b2e181688d4396db2a699f65539add6e10b8150"
-    DOWNLOAD_LINK="https://apollo-platform-system.bj.bcebos.com/archive/6.0/${PKG_NAME}"
+    if [[ "${ARCH}" == "x86_64" ]]; then
+        PKG_NAME="adv_plat-3.0-x86_64.tar.gz"
+        CHECKSUM="647197f3f222a26dbc5c94a3e5143872b8c1359387bfb439e9f3dcd5064601e0"
+        DOWNLOAD_LINK="https://apollo-system.cdn.bcebos.com/archive/6.0/${PKG_NAME}"
+        download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
 
-    download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
+        tar xzf ${PKG_NAME}
 
-    tar xzf ${PKG_NAME}
+        # Note(storypku): workaround for the issue that adv_plat built on ubuntu 20.04 host
+        # can't work properly for camera driver
+        EXTRACTED_PKG="${PKG_NAME%%.tar.gz}"
+        mv -f  ${EXTRACTED_PKG}/* ${DEST_DIR}/
+        echo "${DEST_DIR}/lib" >> "${APOLLO_LD_FILE}"
+        ldconfig
 
-    mv adv_plat/include ${DEST_DIR}/include
-    mv adv_plat/lib     ${DEST_DIR}/lib
-
-    echo "${DEST_DIR}/lib" >> "${APOLLO_LD_FILE}"
-    ldconfig
-
-    rm -r ${PKG_NAME} adv_plat
-    exit 0
+        # cleanup
+        rm -rf ${EXTRACTED_PKG} ${PKG_NAME}
+        exit 0
+    fi
 fi
 
 #info "Git clone https://github.com/ApolloAuto/apollo-contrib.git"
@@ -51,7 +56,7 @@ fi
 
 PKG_NAME="apollo-contrib-baidu-1.0.tar.gz"
 CHECKSUM="cd385dae6d23c6fd70c2c0dcd0ce306241f84a638f50988c6ca52952c304bbec"
-DOWNLOAD_LINK="https://apollo-platform-system.bj.bcebos.com/archive/6.0/${PKG_NAME}"
+DOWNLOAD_LINK="https://apollo-system.cdn.bcebos.com/archive/6.0/${PKG_NAME}"
 
 download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
 
@@ -91,4 +96,3 @@ pushd ${OUT_DIR}
 popd
 
 rm -rf ${PKG_NAME} apollo-contrib
-

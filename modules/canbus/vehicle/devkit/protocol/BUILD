@@ -3,9 +3,12 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
+
 cc_library(
     name = "canbus_devkit_protocol",
     deps = [
+        ":bms_report_512",
         ":brake_command_101",
         ":brake_report_501",
         ":gear_command_103",
@@ -27,10 +30,32 @@ cc_library(
 )
 
 cc_library(
+    name = "bms_report_512",
+    srcs = ["bms_report_512.cc"],
+    hdrs = ["bms_report_512.h"],
+    copts = CANBUS_COPTS,
+    deps = [
+        "//modules/canbus/proto:chassis_detail_cc_proto",
+        "//modules/drivers/canbus/can_comm:message_manager_base",
+        "//modules/drivers/canbus/common:canbus_common",
+    ],
+)
+
+cc_test(
+    name = "bms_report_512_test",
+    size = "small",
+    srcs = ["bms_report_512_test.cc"],
+    deps = [
+        "//modules/canbus/vehicle/devkit/protocol:canbus_devkit_protocol",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "brake_command_101",
     srcs = ["brake_command_101.cc"],
     hdrs = ["brake_command_101.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -52,7 +77,7 @@ cc_library(
     name = "brake_report_501",
     srcs = ["brake_report_501.cc"],
     hdrs = ["brake_report_501.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -74,7 +99,7 @@ cc_library(
     name = "gear_command_103",
     srcs = ["gear_command_103.cc"],
     hdrs = ["gear_command_103.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -96,7 +121,7 @@ cc_library(
     name = "gear_report_503",
     srcs = ["gear_report_503.cc"],
     hdrs = ["gear_report_503.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -118,7 +143,7 @@ cc_library(
     name = "park_command_104",
     srcs = ["park_command_104.cc"],
     hdrs = ["park_command_104.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -140,7 +165,7 @@ cc_library(
     name = "park_report_504",
     srcs = ["park_report_504.cc"],
     hdrs = ["park_report_504.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -162,7 +187,7 @@ cc_library(
     name = "steering_command_102",
     srcs = ["steering_command_102.cc"],
     hdrs = ["steering_command_102.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -184,7 +209,7 @@ cc_library(
     name = "steering_report_502",
     srcs = ["steering_report_502.cc"],
     hdrs = ["steering_report_502.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -206,7 +231,7 @@ cc_library(
     name = "throttle_command_100",
     srcs = ["throttle_command_100.cc"],
     hdrs = ["throttle_command_100.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -228,7 +253,7 @@ cc_library(
     name = "throttle_report_500",
     srcs = ["throttle_report_500.cc"],
     hdrs = ["throttle_report_500.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -250,7 +275,7 @@ cc_library(
     name = "ultr_sensor_1_507",
     srcs = ["ultr_sensor_1_507.cc"],
     hdrs = ["ultr_sensor_1_507.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -272,7 +297,7 @@ cc_library(
     name = "ultr_sensor_2_508",
     srcs = ["ultr_sensor_2_508.cc"],
     hdrs = ["ultr_sensor_2_508.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -294,7 +319,7 @@ cc_library(
     name = "ultr_sensor_3_509",
     srcs = ["ultr_sensor_3_509.cc"],
     hdrs = ["ultr_sensor_3_509.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -316,7 +341,7 @@ cc_library(
     name = "ultr_sensor_4_510",
     srcs = ["ultr_sensor_4_510.cc"],
     hdrs = ["ultr_sensor_4_510.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -338,7 +363,7 @@ cc_library(
     name = "ultr_sensor_5_511",
     srcs = ["ultr_sensor_5_511.cc"],
     hdrs = ["ultr_sensor_5_511.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -360,7 +385,7 @@ cc_library(
     name = "vcu_report_505",
     srcs = ["vcu_report_505.cc"],
     hdrs = ["vcu_report_505.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -382,7 +407,7 @@ cc_library(
     name = "wheelspeed_report_506",
     srcs = ["wheelspeed_report_506.cc"],
     hdrs = ["wheelspeed_report_506.h"],
-    copts = ["-DMODULE_NAME=\\\"canbus\\\""],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/proto:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",

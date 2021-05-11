@@ -3,11 +3,13 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+CONTROL_COPTS = ['-DMODULE_NAME=\\"control\\"']
+
 cc_library(
     name = "control_gflags",
     srcs = ["control_gflags.cc"],
     hdrs = ["control_gflags.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         "@com_github_gflags_gflags//:gflags",
     ],
@@ -17,14 +19,14 @@ cc_library(
     name = "hysteresis_filter",
     srcs = ["hysteresis_filter.cc"],
     hdrs = ["hysteresis_filter.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
 )
 
 cc_library(
     name = "interpolation_1d",
     srcs = ["interpolation_1d.cc"],
     hdrs = ["interpolation_1d.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         "//cyber",
         "@eigen",
@@ -35,7 +37,7 @@ cc_library(
     name = "interpolation_2d",
     srcs = ["interpolation_2d.cc"],
     hdrs = ["interpolation_2d.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         "//cyber",
         "@eigen",
@@ -46,7 +48,7 @@ cc_library(
     name = "leadlag_controller",
     srcs = ["leadlag_controller.cc"],
     hdrs = ["leadlag_controller.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         "//cyber/common:log",
         "//modules/control/proto:leadlag_conf_cc_proto",
@@ -57,7 +59,7 @@ cc_library(
     name = "mrac_controller",
     srcs = ["mrac_controller.cc"],
     hdrs = ["mrac_controller.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         "//cyber",
         "//modules/common/configs/proto:vehicle_config_cc_proto",
@@ -74,7 +76,7 @@ cc_library(
     name = "pid_controller",
     srcs = ["pid_controller.cc"],
     hdrs = ["pid_controller.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         "//cyber/common:log",
         "//modules/control/proto:pid_conf_cc_proto",
@@ -85,7 +87,7 @@ cc_library(
     name = "pid_BC_controller",
     srcs = ["pid_BC_controller.cc"],
     hdrs = ["pid_BC_controller.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         ":pid_controller",
         "//cyber",
@@ -97,7 +99,7 @@ cc_library(
     name = "pid_IC_controller",
     srcs = ["pid_IC_controller.cc"],
     hdrs = ["pid_IC_controller.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         ":pid_controller",
         "//cyber",
@@ -109,7 +111,7 @@ cc_library(
     name = "trajectory_analyzer",
     srcs = ["trajectory_analyzer.cc"],
     hdrs = ["trajectory_analyzer.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         ":control_gflags",
         "//cyber/common:log",
@@ -123,7 +125,7 @@ cc_library(
 
 cc_library(
     name = "common",
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         ":control_gflags",
         ":hysteresis_filter",
@@ -149,7 +151,7 @@ cc_test(
     name = "interpolation_1d_test",
     size = "small",
     srcs = ["interpolation_1d_test.cc"],
-    data = ["//modules/control/testdata:control_testdata"],
+    data = ["//modules/control:test_data"],
     deps = [
         ":interpolation_1d",
         "//cyber",
@@ -172,7 +174,7 @@ cc_test(
     name = "interpolation_2d_test",
     size = "small",
     srcs = ["interpolation_2d_test.cc"],
-    data = ["//modules/control/testdata:control_testdata"],
+    data = ["//modules/control:test_data"],
     deps = [
         ":interpolation_2d",
         "//cyber",
@@ -186,7 +188,7 @@ cc_test(
     name = "leadlag_controller_test",
     size = "small",
     srcs = ["leadlag_controller_test.cc"],
-    data = ["//modules/control/testdata:control_testdata"],
+    data = ["//modules/control:test_data"],
     deps = [
         ":leadlag_controller",
         "//cyber/common:file",
@@ -214,7 +216,7 @@ cc_test(
     name = "mrac_controller_test",
     size = "small",
     srcs = ["mrac_controller_test.cc"],
-    data = ["//modules/control/testdata:control_testdata"],
+    data = ["//modules/control:test_data"],
     deps = [
         ":mrac_controller",
         "//modules/canbus/proto:chassis_cc_proto",
@@ -238,7 +240,7 @@ cc_test(
     name = "pid_controller_test",
     size = "small",
     srcs = ["pid_controller_test.cc"],
-    data = ["//modules/control/testdata:control_testdata"],
+    data = ["//modules/control:test_data"],
     deps = [
         ":pid_controller",
         "//cyber/common:file",
@@ -266,7 +268,7 @@ cc_test(
     name = "pid_BC_controller_test",
     size = "small",
     srcs = ["pid_BC_controller_test.cc"],
-    data = ["//modules/control/testdata:control_testdata"],
+    data = ["//modules/control:test_data"],
     deps = [
         ":pid_BC_controller",
         "//modules/canbus/proto:chassis_cc_proto",
@@ -293,7 +295,7 @@ cc_test(
     name = "pid_IC_controller_test",
     size = "small",
     srcs = ["pid_IC_controller_test.cc"],
-    data = ["//modules/control/testdata:control_testdata"],
+    data = ["//modules/control:test_data"],
     deps = [
         ":pid_IC_controller",
         "//modules/canbus/proto:chassis_cc_proto",

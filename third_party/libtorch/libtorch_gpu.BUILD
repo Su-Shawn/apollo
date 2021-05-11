@@ -13,13 +13,15 @@ cc_library(
     linkopts = [
         "-L/usr/local/libtorch_gpu/lib",
         "-lc10",
+        "-lc10_cuda",
         "-ltorch",
         "-ltorch_cpu",
         "-ltorch_cuda",
     ],
     linkstatic = False,
     deps = [
+        "@local_config_cuda//cuda:cudart",
+        "@local_config_python//:python_headers",
         "@local_config_python//:python_lib",
-        "@local_config_cuda//:cudart",
     ],
 )

@@ -3,6 +3,8 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+MAP_COPTS = ["-DMODULE_NAME=\\\"map\\\""]
+
 cc_library(
     name = "hdmap",
     srcs = [
@@ -16,7 +18,7 @@ cc_library(
         "hdmap_impl.h",
         "hdmap_util.h",
     ],
-    copts = ["-DMODULE_NAME=\\\"map\\\""],
+    copts = MAP_COPTS,
     deps = [
         "//cyber/common:file",
         "//cyber/common:macros",
@@ -28,7 +30,7 @@ cc_library(
         "//modules/map/proto:map_cc_proto",
         "//modules/map/relative_map/proto:navigation_cc_proto",
         "@com_google_absl//absl/strings",
-        "@com_google_glog//:glog",
+        "@com_github_google_glog//:glog",
     ],
 )
 
@@ -36,7 +38,7 @@ cc_library(
     name = "hdmap_util",
     srcs = ["hdmap_util.cc"],
     hdrs = ["hdmap_util.h"],
-    copts = ["-DMODULE_NAME=\\\"map\\\""],
+    copts = MAP_COPTS,
     deps = [
         ":hdmap",
         "//cyber/common:file",
@@ -68,7 +70,7 @@ cc_test(
     deps = [
         ":hdmap",
         "//cyber/common:file",
-        "@com_google_glog//:glog",
+        "@com_github_google_glog//:glog",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -83,7 +85,7 @@ cc_test(
     ],
     deps = [
         ":hdmap_util",
-        "@com_google_glog//:glog",
+        "@com_github_google_glog//:glog",
         "@com_google_googletest//:gtest_main",
     ],
 )

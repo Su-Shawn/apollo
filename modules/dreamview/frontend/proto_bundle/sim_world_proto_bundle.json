@@ -267,6 +267,14 @@
                   "type": "double",
                   "id": 27
                 },
+                "batteryPercentage": {
+                  "type": "int32",
+                  "id": 38
+                },
+                "gearLocation": {
+                  "type": "apollo.canbus.Chassis.GearPosition",
+                  "id": 39
+                },
                 "disengageType": {
                   "type": "DisengageType",
                   "id": 28
@@ -294,6 +302,17 @@
                 "obstaclePriority": {
                   "type": "apollo.prediction.ObstaclePriority",
                   "id": 33
+                },
+                "source": {
+                  "type": "apollo.perception.PerceptionObstacle.Source",
+                  "id": 36,
+                  "options": {
+                    "default": "HOST_VEHICLE"
+                  }
+                },
+                "v2xInfo": {
+                  "type": "apollo.perception.V2XInformation",
+                  "id": 37
                 }
               },
               "nested": {
@@ -619,6 +638,13 @@
                   "keyType": "string",
                   "type": "SensorMeasurements",
                   "id": 29
+                },
+                "isSirenOn": {
+                  "type": "bool",
+                  "id": 30,
+                  "options": {
+                    "default": false
+                  }
                 }
               }
             },
@@ -822,6 +848,18 @@
         },
         "common": {
           "nested": {
+            "Direction": {
+              "values": {
+                "EAST": 0,
+                "WEST": 1,
+                "SOUTH": 2,
+                "NORTH": 3,
+                "NORTHEAST": 4,
+                "SOUTHEAST": 5,
+                "SOUTHWEST": 6,
+                "NORTHWEST": 7
+              }
+            },
             "DriveEvent": {
               "fields": {
                 "header": {
@@ -1412,7 +1450,8 @@
                 "WEY": 5,
                 "ZHONGYUN": 6,
                 "CH": 7,
-                "DKIT": 8
+                "DKIT": 8,
+                "NEOLIX": 9
               }
             },
             "VehicleID": {
@@ -2191,6 +2230,13 @@
                 "vehicleId": {
                   "type": "apollo.common.VehicleID",
                   "id": 33
+                },
+                "batterySocPercentage": {
+                  "type": "int32",
+                  "id": 34,
+                  "options": {
+                    "default": -1
+                  }
                 }
               },
               "nested": {
@@ -3072,7 +3118,8 @@
                   "values": {
                     "LEFT_NUDGE": 1,
                     "RIGHT_NUDGE": 2,
-                    "NO_NUDGE": 3
+                    "DYNAMIC_LEFT_NUDGE": 3,
+                    "DYNAMIC_RIGHT_NUDGE": 4
                   }
                 }
               }
@@ -3843,6 +3890,10 @@
                   "rule": "repeated",
                   "type": "string",
                   "id": 2
+                },
+                "localRouting": {
+                  "type": "RoutingResponseFeature",
+                  "id": 3
                 }
               }
             },
@@ -3980,8 +4031,8 @@
                   "type": "apollo.common.Header",
                   "id": 1
                 },
-                "learningData": {
-                  "type": "LearningData",
+                "learningDataFrame": {
+                  "type": "LearningDataFrame",
                   "id": 2
                 }
               }
@@ -6425,7 +6476,9 @@
                     "NO_LEARNING": 0,
                     "E2E": 1,
                     "HYBRID": 2,
-                    "RL_TEST": 3
+                    "RL_TEST": 3,
+                    "E2E_TEST": 4,
+                    "HYBRID_TEST": 5
                   }
                 }
               }
@@ -7369,9 +7422,8 @@
               "nested": {
                 "ModelType": {
                   "values": {
-                    "CONV_RNN": 1,
-                    "CNN": 2,
-                    "CNN_LSTM": 3
+                    "CNN": 1,
+                    "CNN_LSTM": 2
                   }
                 }
               }
@@ -7743,6 +7795,20 @@
                   "options": {
                     "default": 1.5
                   }
+                },
+                "adcBufferCoeff": {
+                  "type": "double",
+                  "id": 7,
+                  "options": {
+                    "default": 1
+                  }
+                },
+                "isExtendLaneBoundsToIncludeAdc": {
+                  "type": "bool",
+                  "id": 8,
+                  "options": {
+                    "default": true
+                  }
                 }
               }
             },
@@ -7773,6 +7839,10 @@
                   "options": {
                     "default": 20
                   }
+                },
+                "weightXRefPathReference": {
+                  "type": "double",
+                  "id": 2
                 }
               }
             },
@@ -7874,6 +7944,13 @@
                 "laneChangePathConfig": {
                   "type": "PiecewiseJerkPathWeights",
                   "id": 2
+                },
+                "pathReferenceLWeight": {
+                  "type": "double",
+                  "id": 3,
+                  "options": {
+                    "default": 0
+                  }
                 }
               }
             },
@@ -9745,6 +9822,10 @@
                 "learningModelOutputFailReason": {
                   "type": "string",
                   "id": 3
+                },
+                "evaluatedPathReference": {
+                  "type": "apollo.common.Path",
+                  "id": 4
                 }
               }
             }
@@ -9973,6 +10054,27 @@
                 }
               }
             },
+            "V2XInformation": {
+              "fields": {
+                "v2xType": {
+                  "rule": "repeated",
+                  "type": "V2XType",
+                  "id": 1,
+                  "options": {
+                    "packed": false
+                  }
+                }
+              },
+              "nested": {
+                "V2XType": {
+                  "values": {
+                    "NONE": 0,
+                    "ZOMBIES_CAR": 1,
+                    "BLIND_ZONE": 2
+                  }
+                }
+              }
+            },
             "SensorMeasurement": {
               "fields": {
                 "sensorId": {
@@ -10171,6 +10273,17 @@
                 "msg": {
                   "type": "DebugMessage",
                   "id": 26
+                },
+                "source": {
+                  "type": "Source",
+                  "id": 27,
+                  "options": {
+                    "default": "HOST_VEHICLE"
+                  }
+                },
+                "v2xInfo": {
+                  "type": "V2XInformation",
+                  "id": 28
                 }
               },
               "nested": {
@@ -10205,6 +10318,12 @@
                     "ST_TRICYCLIST": 9,
                     "ST_PEDESTRIAN": 10,
                     "ST_TRAFFICCONE": 11
+                  }
+                },
+                "Source": {
+                  "values": {
+                    "HOST_VEHICLE": 0,
+                    "V2X": 1
                   }
                 }
               }
@@ -10614,6 +10733,11 @@
                   "rule": "repeated",
                   "type": "PNCJunction",
                   "id": 13
+                },
+                "rsu": {
+                  "rule": "repeated",
+                  "type": "RSU",
+                  "id": 14
                 }
               }
             },
@@ -10979,6 +11103,9 @@
             "PNCJunctionOverlapInfo": {
               "fields": {}
             },
+            "RSUOverlapInfo": {
+              "fields": {}
+            },
             "RegionOverlapInfo": {
               "fields": {
                 "id": {
@@ -11005,7 +11132,8 @@
                     "clearAreaOverlapInfo",
                     "speedBumpOverlapInfo",
                     "parkingSpaceOverlapInfo",
-                    "pncJunctionOverlapInfo"
+                    "pncJunctionOverlapInfo",
+                    "rsuOverlapInfo"
                   ]
                 }
               },
@@ -11053,6 +11181,10 @@
                 "pncJunctionOverlapInfo": {
                   "type": "PNCJunctionOverlapInfo",
                   "id": 12
+                },
+                "rsuOverlapInfo": {
+                  "type": "RSUOverlapInfo",
+                  "id": 13
                 }
               }
             },
@@ -11290,6 +11422,23 @@
                     "CITY_ROAD": 2,
                     "PARK": 3
                   }
+                }
+              }
+            },
+            "RSU": {
+              "fields": {
+                "id": {
+                  "type": "Id",
+                  "id": 1
+                },
+                "junctionId": {
+                  "type": "Id",
+                  "id": 2
+                },
+                "overlapId": {
+                  "rule": "repeated",
+                  "type": "Id",
+                  "id": 3
                 }
               }
             },
@@ -12614,6 +12763,76 @@
                 "navigationLane": {
                   "type": "NavigationLaneConfig",
                   "id": 2
+                }
+              }
+            }
+          }
+        },
+        "audio": {
+          "nested": {
+            "MovingResult": {
+              "values": {
+                "UNKNOWN": 0,
+                "APPROACHING": 1,
+                "DEPARTING": 2,
+                "STATIONARY": 3
+              }
+            },
+            "AudioType": {
+              "values": {
+                "UNKNOWN_TYPE": 0,
+                "POLICE": 1,
+                "AMBULANCE": 2,
+                "FIRETRUCK": 3
+              }
+            },
+            "AudioDirection": {
+              "values": {
+                "UNKNOWN_DIRECTION": 0,
+                "FRONT": 1,
+                "LEFT": 2,
+                "BACK": 3,
+                "RIGHT": 4
+              }
+            },
+            "AudioEvent": {
+              "fields": {
+                "header": {
+                  "type": "apollo.common.Header",
+                  "id": 1
+                },
+                "id": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "movingResult": {
+                  "type": "apollo.audio.MovingResult",
+                  "id": 3,
+                  "options": {
+                    "default": "UNKNOWN"
+                  }
+                },
+                "audioType": {
+                  "type": "apollo.audio.AudioType",
+                  "id": 4,
+                  "options": {
+                    "default": "UNKNOWN_TYPE"
+                  }
+                },
+                "sirenIsOn": {
+                  "type": "bool",
+                  "id": 5
+                },
+                "audioDirection": {
+                  "type": "apollo.audio.AudioDirection",
+                  "id": 6,
+                  "options": {
+                    "default": "UNKNOWN_DIRECTION"
+                  }
+                },
+                "pose": {
+                  "type": "apollo.localization.Pose",
+                  "id": 7
                 }
               }
             }

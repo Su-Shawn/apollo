@@ -22,12 +22,12 @@
 #include <cuda_runtime_api.h>
 
 #include "cyber/common/log.h"
-
 #include "modules/perception/base/object_pool_types.h"
 #include "modules/perception/base/point_cloud_util.h"
 #include "modules/perception/common/perception_gflags.h"
 #include "modules/perception/lidar/common/lidar_timer.h"
 #include "modules/perception/lidar/common/pcl_util.h"
+#include "modules/perception/lidar/lib/detection/lidar_point_pillars/params.h"
 
 namespace apollo {
 namespace perception {
@@ -37,12 +37,26 @@ using base::Object;
 using base::PointD;
 using base::PointF;
 
+PointPillarsDetection::PointPillarsDetection()
+    : x_min_(Params::kMinXRange),
+      x_max_(Params::kMaxXRange),
+      y_min_(Params::kMinYRange),
+      y_max_(Params::kMaxYRange),
+      z_min_(Params::kMinZRange),
+      z_max_(Params::kMaxZRange) {
+  if (FLAGS_enable_ground_removal) {
+    z_min_ = std::max(z_min_, static_cast<float>(FLAGS_ground_removal_height));
+  }
+}
+
 // TODO(chenjiahao):
 //  specify score threshold and nms over lap threshold for each class.
 bool PointPillarsDetection::Init(const DetectionInitOptions& options) {
-  point_pillars_ptr_.reset(new PointPillars(
-      FLAGS_reproduce_result_mode, FLAGS_score_threshold,
-      FLAGS_nms_overlap_threshold, FLAGS_pfe_onnx_file, FLAGS_rpn_onnx_file));
+  point_pillars_ptr_.reset(
+      new PointPillars(FLAGS_reproduce_result_mode, FLAGS_score_threshold,
+                       FLAGS_nms_overlap_threshold, FLAGS_pfe_torch_file,
+                       FLAGS_scattered_torch_file, FLAGS_backbone_torch_file,
+                       FLAGS_fpn_torch_file, FLAGS_bbox_head_torch_file));
   return true;
 }
 
@@ -88,7 +102,7 @@ bool PointPillarsDetection::Detect(const DetectionOptions& options,
                                   FLAGS_downsample_beams_factor)) {
       cur_cloud_ptr_ = downsample_beams_cloud_ptr;
     } else {
-      AWARN << "Down sample beams factor must be >= 1. Cancel down sampling."
+      AWARN << "Down-sample beams factor must be >= 1. Cancel down-sampling."
                " Current factor: "
             << FLAGS_downsample_beams_factor;
     }
@@ -101,10 +115,9 @@ bool PointPillarsDetection::Detect(const DetectionOptions& options,
     pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud_ptr(
         new pcl::PointCloud<pcl::PointXYZI>());
     TransformToPCLXYZI(*cur_cloud_ptr_, pcl_cloud_ptr);
-    DownSampleCloudByVoxelGrid(pcl_cloud_ptr, filtered_cloud_ptr,
-                               FLAGS_downsample_voxel_size_x,
-                               FLAGS_downsample_voxel_size_y,
-                               FLAGS_downsample_voxel_size_z);
+    DownSampleCloudByVoxelGrid(
+        pcl_cloud_ptr, filtered_cloud_ptr, FLAGS_downsample_voxel_size_x,
+        FLAGS_downsample_voxel_size_y, FLAGS_downsample_voxel_size_z);
 
     // transform pcl point cloud to apollo point cloud
     base::PointFCloudPtr downsample_voxel_cloud_ptr(new base::PointFCloud());
@@ -185,7 +198,8 @@ bool PointPillarsDetection::Detect(const DetectionOptions& options,
              &out_detections, &out_labels);
   collect_time_ = timer.toc(true);
 
-  AINFO << "PointPillars: " << "\n"
+  AINFO << "PointPillars: "
+        << "\n"
         << "down sample: " << downsample_time_ << "\t"
         << "fuse: " << fuse_time_ << "\t"
         << "shuffle: " << shuffle_time_ << "\t"
@@ -202,11 +216,19 @@ void PointPillarsDetection::CloudToArray(const base::PointFCloudPtr& pc_ptr,
                                          const float normalizing_factor) {
   for (size_t i = 0; i < pc_ptr->size(); ++i) {
     const auto& point = pc_ptr->at(i);
-    out_points_array[i * FLAGS_num_point_feature + 0] = point.x;
-    out_points_array[i * FLAGS_num_point_feature + 1] = point.y;
-    out_points_array[i * FLAGS_num_point_feature + 2] = point.z;
+    float x = point.x;
+    float y = point.y;
+    float z = point.z;
+    float intensity = point.intensity;
+    if (z < z_min_ || z > z_max_ || y < y_min_ || y > y_max_ || x < x_min_ ||
+        x > x_max_) {
+      continue;
+    }
+    out_points_array[i * FLAGS_num_point_feature + 0] = x;
+    out_points_array[i * FLAGS_num_point_feature + 1] = y;
+    out_points_array[i * FLAGS_num_point_feature + 2] = z;
     out_points_array[i * FLAGS_num_point_feature + 3] =
-        point.intensity / normalizing_factor;
+        intensity / normalizing_factor;
     // delta of timestamp between prev and cur frames
     out_points_array[i * FLAGS_num_point_feature + 4] =
         static_cast<float>(pc_ptr->points_timestamp(i));
@@ -328,29 +350,16 @@ void PointPillarsDetection::GetObjects(
   }
 }
 
-// TODO(chenjiahao): update the base ObjectSubType with more fine-grained types
+// TODO(all): update the base ObjectSubType with more fine-grained types
+// TODO(chenjiahao): move types into an array in the same order as offline
 base::ObjectSubType PointPillarsDetection::GetObjectSubType(const int label) {
   switch (label) {
     case 0:
-      return base::ObjectSubType::BUS;
-    case 1:
       return base::ObjectSubType::CAR;
-    case 2:  // construction vehicle
-      return base::ObjectSubType::UNKNOWN_MOVABLE;
-    case 3:  // trailer
-      return base::ObjectSubType::UNKNOWN_MOVABLE;
-    case 4:
-      return base::ObjectSubType::TRUCK;
-    case 5:  // barrier
-      return base::ObjectSubType::UNKNOWN_UNMOVABLE;
-    case 6:
-      return base::ObjectSubType::CYCLIST;
-    case 7:
-      return base::ObjectSubType::MOTORCYCLIST;
-    case 8:
+    case 1:
       return base::ObjectSubType::PEDESTRIAN;
-    case 9:
-      return base::ObjectSubType::TRAFFICCONE;
+    case 2:  // construction vehicle
+      return base::ObjectSubType::CYCLIST;
     default:
       return base::ObjectSubType::UNKNOWN;
   }

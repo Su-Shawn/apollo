@@ -1,7 +1,22 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
+
+install(
+    name = "install",
+    targets = [
+      ":map_tool",
+      ":map_xysl",
+      ":refresh_default_end_way_point",
+      ":sim_map_generator",
+      ":proto_map_generator",
+      ":bin_map_generator",
+      ":quaternion_euler",
+    ],
+    runtime_dest = "modules/map/tools",
+)
 
 cc_binary(
     name = "map_tool",
@@ -75,7 +90,7 @@ cc_binary(
         "//cyber/common:file",
         "//cyber/common:log",
         "//modules/map/hdmap:hdmap_util",
-        "//modules/map/hdmap/adapter:opendrive_adapter",
+        "//modules/map/proto:map_cc_proto",
         "@com_github_gflags_gflags//:gflags",
     ],
 )

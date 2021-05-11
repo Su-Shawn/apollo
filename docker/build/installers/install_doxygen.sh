@@ -20,40 +20,40 @@
 set -e
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
+
+# shellcheck source=./installer_base.sh
 . ./installer_base.sh
 
-apt-get -y update && \
-    apt-get -y install \
-        flex \
-        bison \
-        graphviz \
-        doxygen
+apt_get_update_and_install \
+    flex \
+    bison \
+    graphviz
 
-exit 0
-
-# Source Build
-
-VERSION="1_8_18"
-PKG_NAME="doxygen-Release_${VERSION}.tar.gz"
-CHECKSUM="9c88f733396dca16139483045d5afa5bbf19d67be0b8f0ea43c4e813ecfb2aa2"
-DOWNLOAD_LINK="https://github.com/doxygen/doxygen/archive/Release_${VERSION}.tar.gz"
-# https://github.com/doxygen/doxygen/archive/Release_1_8_18.tar.gz
+# Build doxygen from source to reduce image size
+VERSION="1.9.1"
+PKG_NAME="doxygen-${VERSION}.src.tar.gz"
+CHECKSUM="67aeae1be4e1565519898f46f1f7092f1973cce8a767e93101ee0111717091d1"
+DOWNLOAD_LINK="http://doxygen.nl/files/${PKG_NAME}"
 
 download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
 
 tar xzf "${PKG_NAME}"
-pushd "doxygen-Release_${VERSION}" >/dev/null
+pushd "doxygen-${VERSION}" >/dev/null
     mkdir build && cd build
     cmake .. \
         -DCMAKE_INSTALL_PREFIX="${SYSROOT_DIR}" \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=OFF
 
-    make -j$(nproc)
+    make -j "$(nproc)"
     make install
 popd
 
-rm -rf "${PKG_NAME}" "doxygen-Release_${VERSION}"
+rm -rf "${PKG_NAME}" "doxygen-${VERSION}"
 
-VERSION="$(echo ${VERSION} | tr '_' '.')"
-info "Done installing doxygen-${VERSION}"
+# VERSION="$(echo ${VERSION} | tr '_' '.')"
+ok "Done installing doxygen-${VERSION}"
+
+# Kick the ladder
+apt_get_remove \
+    bison flex

@@ -27,12 +27,10 @@ TARGET_ARCH="$(uname -m)"
 ## NOTE:
 ## buildifier/buildozer was moved into install_bazel.sh.
 
-apt-get -y update && \
-    apt-get -y install \
-    cppcheck    \
-    shellcheck  \
-    lcov        \
-    valgrind
+apt_get_update_and_install \
+    lcov
+#    cppcheck
+#    valgrind
 
 # libgoogle-perftools4  # gperftools
 # PROFILER_SO="/usr/lib/${TARGET_ARCH}-linux-gnu/libprofiler.so"
@@ -41,21 +39,19 @@ apt-get -y update && \
 #    ln -s "${PROFILER_SO}.0" "${PROFILER_SO}"
 # fi
 
+bash ${CURR_DIR}/install_shellcheck.sh
 bash ${CURR_DIR}/install_gperftools.sh
 
-bash ${CURR_DIR}/install_benchmark.sh
-
-# TechDoc generation
-bash ${CURR_DIR}/install_doxygen.sh
-
+#bash ${CURR_DIR}/install_benchmark.sh
+# Generate Tech Docs
+# bash ${CURR_DIR}/install_doxygen.sh
 # sphinx ?
 
-## Pylint
+## Linters and formatters for Python
+# pylint/autopep8/pyflakes
 pip3_install pycodestyle \
-    pyflakes \
     flake8 \
-    autopep8
-# pylint
+    yapf
 
 # shfmt
 bash ${CURR_DIR}/install_shfmt.sh

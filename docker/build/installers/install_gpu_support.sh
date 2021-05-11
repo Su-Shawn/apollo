@@ -27,13 +27,9 @@ apt_get_update_and_install \
     libatlas-base-dev \
     liblapack-dev
 
-# TODO(storypku): GPU Build only
-apt_get_update_and_install \
-    libcublas10 \
-    libcublas-dev
-
-info "Install TensorRT 7 ..."
-bash ${CURR_DIR}/install_tensorrt.sh
+# Note(infra): build magma before mkl
+info "Install Magma ..."
+bash ${CURR_DIR}/install_magma.sh
 
 info "Install libtorch ..."
 bash ${CURR_DIR}/install_libtorch.sh

@@ -133,8 +133,9 @@ std::unique_ptr<Scenario> ScenarioManager::CreateScenario(
 
 void ScenarioManager::RegisterScenarios() {
   // lane_follow
-  if (planning_config_.learning_mode() == PlanningConfig::HYBRID) {
-    // HYBRID
+  if (planning_config_.learning_mode() == PlanningConfig::HYBRID ||
+      planning_config_.learning_mode() == PlanningConfig::HYBRID_TEST) {
+    // HYBRID or HYBRID_TEST
     ACHECK(Scenario::LoadConfig(FLAGS_scenario_lane_follow_hybrid_config_file,
                                 &config_map_[ScenarioConfig::LANE_FOLLOW]));
   } else {
@@ -354,7 +355,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectPadMsgScenario(
   return default_scenario_type_;
 }
 
-ScenarioConfig::ScenarioType ScenarioManager::SelectInterceptionScenario(
+ScenarioConfig::ScenarioType ScenarioManager::SelectIntersectionScenario(
     const Frame& frame) {
   ScenarioConfig::ScenarioType scenario_type = default_scenario_type_;
 
@@ -814,7 +815,8 @@ void ScenarioManager::ScenarioDispatch(const Frame& frame) {
                                   ->GetLatestLearningDataFrame()
                                   ->adc_trajectory_point_size();
   }
-  if (planning_config_.learning_mode() == PlanningConfig::E2E &&
+  if ((planning_config_.learning_mode() == PlanningConfig::E2E ||
+       planning_config_.learning_mode() == PlanningConfig::E2E_TEST) &&
       history_points_len >= FLAGS_min_past_history_points_len) {
     scenario_type = ScenarioDispatchLearning();
   } else {
@@ -888,7 +890,7 @@ ScenarioConfig::ScenarioType ScenarioManager::ScenarioDispatchNonLearning(
   ////////////////////////////////////////
   // intersection scenarios
   if (scenario_type == default_scenario_type_) {
-    scenario_type = SelectInterceptionScenario(frame);
+    scenario_type = SelectIntersectionScenario(frame);
   }
 
   ////////////////////////////////////////

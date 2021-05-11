@@ -30,10 +30,19 @@ const MONITOR_WIDTH_IN_PX = {
     small: 400,
     large: 450,
   },
+  [MONITOR_MENU.FUEL_CLIENT]: {
+    small: 400,
+    large: 450,
+  },
   default: {
     small: 200,
     large: 240,
   },
+};
+
+const MAX_TOOL_VIEW_HEIGHT_IN_PX = {
+  small: 333,
+  large: 380,
 };
 
 export default class Dimension {
@@ -104,9 +113,14 @@ export default class Dimension {
     }
 
     @action updateMainDimension() {
-      let heightRatio = 1;
+      this.main.height = this.pane.height;
       if (this.options.showTools) {
-        heightRatio = OFFLINE_PLAYBACK ? 0.65 : 0.60;
+        const heightRatio = OFFLINE_PLAYBACK ? 0.65 : 0.60;
+        const maxHeight = this.isSmallScreen()
+          ? MAX_TOOL_VIEW_HEIGHT_IN_PX.small : MAX_TOOL_VIEW_HEIGHT_IN_PX.large;
+        this.main.height = Math.max(
+          this.pane.height - maxHeight,
+          this.pane.height * heightRatio);
       }
 
       let widthOffset = 0;
@@ -114,9 +128,7 @@ export default class Dimension {
         widthOffset = this.isSmallScreen()
           ? MAIN_STYLE.SIDE_BAR_WIDTH_SMALL : MAIN_STYLE.SIDE_BAR_WIDTH_LARGE;
       }
-
       this.main.width = Math.max(MAIN_STYLE.MIN_MAIN_VIEW_WIDTH, this.pane.width - widthOffset);
-      this.main.height = this.pane.height * heightRatio;
     }
 
     @action updateSceneDimension() {

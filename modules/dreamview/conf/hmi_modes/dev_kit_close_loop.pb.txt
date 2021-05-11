@@ -1,15 +1,14 @@
 cyber_modules {
   key: "Camera"
   value: {
-    dag_files: "/apollo/modules/drivers/camera/dag/camera.dag"
-    dag_files: "/apollo/modules/drivers/video/dag/video.dag"
+    dag_files: "/apollo/modules/drivers/camera/dag/dev_kit_camera.dag"
     required_for_safety: false
   }
 }
 cyber_modules {
   key: "Lidar"
   value: {
-    dag_files: "/apollo/modules/drivers/velodyne/dag/velodyne16.dag"
+    dag_files: "/apollo/modules/drivers/lidar/dag/lidar.dag"
   }
 }
 cyber_modules {
@@ -79,6 +78,12 @@ cyber_modules {
     dag_files: "/apollo/modules/transform/dag/static_transform.dag"
   }
 }
+cyber_modules {
+  key: "TaskManager"
+  value: {
+    dag_files: "/apollo/modules/task_manager/dag/task_manager.dag"
+  }
+}
 modules {
   key: "Recorder"
   value: {
@@ -112,7 +117,7 @@ monitored_components {
   }
 }
 monitored_components {
-  key: "GPS"
+  key: "GNSS"
   value: {
     process {
       command_keywords: "mainboard"

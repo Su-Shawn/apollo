@@ -1,12 +1,14 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+CONTROL_COPTS = ['-DMODULE_NAME=\\"control\\"']
+
 cc_library(
     name = "control_lib",
-    srcs = [],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         "//cyber",
         "//cyber/time:clock",
@@ -35,7 +37,7 @@ cc_library(
     name = "control_component_lib",
     srcs = ["control_component.cc"],
     hdrs = ["control_component.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         ":control_lib",
         "//modules/control/common:dependency_injector",
@@ -49,19 +51,40 @@ cc_binary(
     deps = [":control_component_lib"],
 )
 
+install(
+    name = "install",
+    data = [
+        ":runtime_data",
+    ],
+    targets = [
+        ":libcontrol_component.so",
+    ],
+)
+
+filegroup(
+    name = "runtime_data",
+    srcs = glob([
+        "conf/*.txt",
+        "conf/*.conf",
+        "dag/*.dag",
+        "launch/*.launch",
+    ]),
+)
+
 cc_test(
     name = "control_component_test",
     size = "small",
     srcs = ["control_component_test.cc"],
-    data = ["//modules/control:control_testdata"],
+    data = ["//modules/control:test_data"],
     deps = [
         ":control_component_lib",
         "@com_google_googletest//:gtest_main",
     ],
 )
 
+# TODO(storypku): split test_data
 filegroup(
-    name = "control_testdata",
+    name = "test_data",
     srcs = glob([
         "testdata/**",
     ]),

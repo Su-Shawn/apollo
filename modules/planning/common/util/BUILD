@@ -3,13 +3,13 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+PLANNING_COPTS = ["-DMODULE_NAME=\\\"planning\\\""]
+
 cc_library(
     name = "util_lib",
     srcs = ["util.cc"],
     hdrs = ["util.h"],
-    copts = [
-        "-DMODULE_NAME=\\\"planning\\\"",
-    ],
+    copts = PLANNING_COPTS,
     deps = [
         "//cyber/common:log",
         "//modules/common/util",
@@ -18,7 +18,7 @@ cc_library(
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:reference_line_info",
         "//modules/planning/proto:planning_cc_proto",
-        "//modules/routing:routing_lib",
+        "//modules/routing",
     ],
 )
 
@@ -26,9 +26,7 @@ cc_library(
     name = "common_lib",
     srcs = ["common.cc"],
     hdrs = ["common.h"],
-    copts = [
-        "-DMODULE_NAME=\\\"planning\\\"",
-    ],
+    copts = PLANNING_COPTS,
     deps = [
         "//cyber/common:log",
         "//modules/common/util",
@@ -41,9 +39,7 @@ cc_library(
     name = "math_util_lib",
     srcs = ["math_util.cc"],
     hdrs = ["math_util.h"],
-    copts = [
-        "-DMODULE_NAME=\\\"planning\\\"",
-    ],
+    copts = PLANNING_COPTS,
     deps = [
         "//cyber/common:log",
         "//modules/common/math",

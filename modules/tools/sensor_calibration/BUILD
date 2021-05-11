@@ -2,9 +2,20 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "config",
+    srcs = glob([
+        "config/**",
+    ]),
+)
+
 py_library(
     name = "configuration_yaml_generator",
     srcs = ["configuration_yaml_generator.py"],
+    deps = [
+        "//modules/dreamview/proto:preprocess_table_py_pb2",
+        "//modules/tools/common:proto_utils",
+    ],
 )
 
 py_library(
@@ -15,12 +26,17 @@ py_library(
 py_binary(
     name = "extract_data",
     srcs = ["extract_data.py"],
+    data = [":config"],
     deps = [
         ":configuration_yaml_generator",
         ":extract_static_data",
+        ":sanity_check",
         ":sensor_msg_extractor",
         "//cyber/proto:record_py_pb2",
+        "//cyber/python/cyber_py3:cyber",
         "//cyber/python/cyber_py3:record",
+        "//modules/dreamview/proto:preprocess_table_py_pb2",
+        "//modules/tools/common:proto_utils",
         "//modules/tools/sensor_calibration/proto:extractor_config_py_pb2",
     ],
 )
@@ -28,6 +44,7 @@ py_binary(
 py_binary(
     name = "extract_static_data",
     srcs = ["extract_static_data.py"],
+    data = [":config"],
     deps = [
         ":configuration_yaml_generator",
         ":data_file_object",
@@ -68,5 +85,13 @@ py_library(
         "//modules/drivers/proto:sensor_image_py_pb2",
         "//modules/localization/proto:gps_py_pb2",
         "//modules/localization/proto:localization_py_pb2",
+    ],
+)
+
+py_binary(
+    name = "sanity_check",
+    srcs = ["sanity_check.py"],
+    deps = [
+        "//modules/tools/common:file_utils",
     ],
 )

@@ -3,11 +3,13 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+CONTROL_COPTS = ['-DMODULE_NAME=\\"control\\"']
+
 cc_library(
     name = "controller_interface",
     srcs = [],
     hdrs = ["controller.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         "//modules/control/common:dependency_injector",
     ],
@@ -17,7 +19,7 @@ cc_library(
     name = "lat_controller",
     srcs = ["lat_controller.cc"],
     hdrs = ["lat_controller.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
         "//cyber",
@@ -56,7 +58,7 @@ cc_library(
     name = "lon_controller",
     srcs = ["lon_controller.cc"],
     hdrs = ["lon_controller.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
         "//cyber",
@@ -88,7 +90,7 @@ cc_library(
     name = "mpc_controller",
     srcs = ["mpc_controller.cc"],
     hdrs = ["mpc_controller.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
         "//cyber",
@@ -124,7 +126,7 @@ cc_library(
 
 cc_library(
     name = "controller",
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         ":controller_agent",
         ":controller_interface",
@@ -139,7 +141,7 @@ cc_library(
     name = "controller_agent",
     srcs = ["controller_agent.cc"],
     hdrs = ["controller_agent.h"],
-    copts = ['-DMODULE_NAME=\\"control\\"'],
+    copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
         ":lat_controller",
@@ -160,7 +162,7 @@ cc_test(
     size = "small",
     srcs = ["lon_controller_test.cc"],
     copts = ["-fno-access-control"],
-    data = ["//modules/control/testdata:control_testdata"],
+    data = ["//modules/control:test_data"],
     deps = [
         ":lon_controller",
         "//cyber",
@@ -179,7 +181,7 @@ cc_test(
     size = "small",
     srcs = ["lat_controller_test.cc"],
     copts = ["-fno-access-control"],
-    data = ["//modules/control/testdata:control_testdata"],
+    data = ["//modules/control:test_data"],
     deps = [
         ":lat_controller",
         "//cyber",
@@ -197,7 +199,7 @@ cc_test(
     size = "small",
     srcs = ["mpc_controller_test.cc"],
     copts = ["-fno-access-control"],
-    data = ["//modules/control/testdata:control_testdata"],
+    data = ["//modules/control:test_data"],
     deps = [
         ":mpc_controller",
         "//cyber",
